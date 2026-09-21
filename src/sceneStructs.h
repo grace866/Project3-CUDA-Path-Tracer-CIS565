@@ -12,7 +12,20 @@
 enum GeomType
 {
     SPHERE,
-    CUBE
+    CUBE,
+    MESH
+};
+
+enum class LightType {
+    AREA,
+    POINT,
+    INFINITE
+};
+
+enum MatType {
+    DIFFUSE,
+    SPECULAR,
+    METALLICWORKFLOW
 };
 
 struct Ray
@@ -35,6 +48,7 @@ struct Geom
 
 struct Material
 {
+    enum MatType type;
     glm::vec3 color;
     struct
     {
@@ -44,7 +58,15 @@ struct Material
     float hasReflective;
     float hasRefractive;
     float indexOfRefraction;
+
+    // for lights
+    LightType lightType;
     float emittance;
+
+    // for metallic workflow pbr
+    float roughness;
+    float metallic;
+    
 };
 
 struct Camera

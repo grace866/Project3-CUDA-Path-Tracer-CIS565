@@ -450,6 +450,7 @@ void runCuda()
         pathtraceInit(scene);
     }
 
+    // iterations are = number of samples per pixel?
     if (iteration < renderState->iterations)
     {
         uchar4* pbo_dptr = NULL;

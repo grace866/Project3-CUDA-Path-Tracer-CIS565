@@ -1,0 +1,139 @@
+{
+  "Materials": {
+    "light1": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 1.0, 1.0, 1.0 ],
+      "ROUGHNESS": -1.0,
+      "METALLIC": 0.0,
+      "EMITTANCE": 20.0
+    },
+    "light2": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 1.0, 1.0, 1.0 ],
+      "ROUGHNESS": -1.0,
+      "METALLIC": 0.0,
+      "EMITTANCE": 15.0
+    },
+    "light3": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 1.0, 1.0, 1.0 ],
+      "ROUGHNESS": -1.0,
+      "METALLIC": 0.0,
+      "EMITTANCE": 10.0
+    },
+    "light4": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 1.0, 1.0, 1.0 ],
+      "ROUGHNESS": -1.0,
+      "METALLIC": 0.0,
+      "EMITTANCE": 5.0
+    },
+    "diffuse": {
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 0.99, 0.99, 0.99 ],
+      "ROUGHNESS": 1.0,
+      "METALLIC": 1.0
+    },
+    "rough": {
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 0.99, 0.99, 0.99 ],
+      "ROUGHNESS": 0.5,
+      "METALLIC": 1.0
+    },
+    "semi_gloss": {
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 0.99, 0.99, 0.99 ],
+      "ROUGHNESS": 0.1,
+      "METALLIC": 1.0
+    },
+    "gloss": {
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 0.99, 0.99, 0.99 ],
+      "ROUGHNESS": 0.02,
+      "METALLIC": 1.0
+    },
+    "ultra_gloss": {
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 0.99, 0.99, 0.99 ],
+      "ROUGHNESS": 0.0,
+      "METALLIC": 1.0
+    }
+  },
+  "Camera": {
+    "RES": [ 800, 800 ],
+    "FOVY": 45.0,
+    "ITERATIONS": 5000,
+    "DEPTH": 8,
+    "FILE": "veach",
+    "EYE": [ 0.0, 5.0, 10.5 ],
+    "LOOKAT": [ 0.0, 5.0, 0.0 ],
+    "UP": [ 0.0, 1.0, 0.0 ]
+  },
+  "Objects": [
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "light1",
+      "TRANS": [ -6.0, 10.0, -10.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 0.3, 0.3, 0.3]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "light2",
+      "TRANS": [ -2.0, 10.0, -10.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 0.8, 0.8, 0.8 ]
+    },
+
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "light3",
+      "TRANS": [ 2.0, 10.0, -10.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 1.5, 1.5, 1.5 ]
+    },
+
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "light4",
+      "TRANS": [ 6.0, 10.0, -10.0 ],
+      "ROTAT": [ 5.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "cube",
+      "MATERIAL": "diffuse",
+      "TRANS": [ 0.0, 0.0, 0.0 ],
+      "ROTAT": [ 15.0, 0.0, 0.0 ],
+      "SCALE": [ 15.0, 0.15, 1.8 ]
+    },
+    {
+      "TYPE": "cube",
+      "MATERIAL": "rough",
+      "TRANS": [ 0.0, 0.8, -2.0 ],
+      "ROTAT": [ 25.0, 0.0, 0.0 ],
+      "SCALE": [ 15.0, 0.15, 1.8 ]
+    },
+    {
+      "TYPE": "cube",
+      "MATERIAL": "semi_gloss",
+      "TRANS": [ 0.0, 2.0, -4.0 ],
+      "ROTAT": [ 30.0, 0.0, 0.0 ],
+      "SCALE": [ 15.0, 0.15, 1.8 ]
+    },
+    {
+      "TYPE": "cube",
+      "MATERIAL": "gloss",
+      "TRANS": [ 0.0, 3.5, -6.0 ],
+      "ROTAT": [ 45.0, 0.0, 0.0 ],
+      "SCALE": [ 15.0, 0.15, 1.8 ]
+    },
+    {
+      "TYPE": "cube",
+      "MATERIAL": "ultra_gloss",
+      "TRANS": [ 0.0, 5.3, -7.5 ],
+      "ROTAT": [ 60.0, 0.0, 0.0 ],
+      "SCALE": [ 15.0, 0.15, 1.8 ]
+    }
+  ]
+}
