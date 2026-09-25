@@ -107,3 +107,21 @@ struct ShadeableIntersection
   glm::vec3 surfaceNormal;
   int materialId;
 };
+
+struct Triangle {
+    int materialid;
+    glm::vec3 positions[3];
+    glm::vec3 normal;
+    glm::vec3 centroid;
+
+    glm::mat4 transform;
+    glm::mat4 inverseTransform;
+    glm::mat4 invTranspose;
+};
+
+struct BVHNode
+{
+    glm::vec3 aabbMin, aabbMax;
+    // leftFirst -> == index of left child if triCount = 0 (not a leaf) & == firstPrim if triCount > 0 (is a leaf) 
+    int leftFirst, triCount;
+};

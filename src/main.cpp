@@ -446,7 +446,7 @@ void runCuda()
 
     if (iteration == 0)
     {
-        pathtraceFree();
+        //pathtraceFree();
         pathtraceInit(scene);
     }
 

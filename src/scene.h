@@ -19,13 +19,6 @@
 //using namespace std;
 using json = nlohmann::json;
 
-
-struct Triangle {
-    int materialid;
-    glm::vec3 positions[3];
-    glm::vec3 normal;
-};
-
 class Scene
 {
 private:

@@ -141,6 +141,20 @@ void Scene::loadFromJSON(const std::string& jsonName)
 }
 
 void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint32_t> MatNameToID) {
+    // first load transforms 
+    const auto& trans = modelData["TRANS"];
+    const auto& rot = modelData["ROTAT"];
+    const auto& scl = modelData["SCALE"];
+
+    glm::vec3 translate = glm::vec3(trans[0], trans[1], trans[2]);
+    glm::vec3 rotate = glm::vec3(rot[0], rot[1], rot[2]);
+    glm::vec3 scale = glm::vec3(scl[0], scl[1], scl[2]);
+    glm::mat4 transform = utilityCore::buildTransformationMatrix(
+        translate, rotate, scale);
+    glm::mat4 inverse = glm::inverse(transform);
+    glm::mat4 inverseTranspose = glm::inverseTranspose(transform);
+
+    // tiny gltf
     tg3_parse_options opts; // configuration
     tg3_error_stack errors; // stores errors/warnings encountered during parsing
     tg3_model model; // parsed mode
@@ -181,8 +195,6 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
 
         const tg3_mesh& mesh = model.meshes[mesh_i];
 
-        std::cout << mesh.name.data << std::endl;
-
         for (int j = 0; j < mesh.primitives_count; ++j) { // for each primitive
             const tg3_primitive& prim = mesh.primitives[j];
 
@@ -192,7 +204,29 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
             const tg3_accessor& indexAccessor = model.accessors[prim.indices];
             const tg3_buffer_view& indexViewBuf = model.buffer_views[indexAccessor.buffer_view];
             const tg3_buffer& indexBuf = model.buffers[indexViewBuf.buffer];
-            const uint8_t* indexData = indexBuf.data.data + indexViewBuf.byte_offset + indexAccessor.byte_offset;
+
+            uint64_t numIndices = indexAccessor.count;
+
+            std::vector<uint32_t> indexData(numIndices);
+            switch (indexAccessor.component_type) {
+                case TG3_COMPONENT_TYPE_UNSIGNED_BYTE: {
+                    const uint8_t* buf = reinterpret_cast<const uint8_t*>(indexBuf.data.data + indexViewBuf.byte_offset + indexAccessor.byte_offset);
+                    for (int i = 0; i < numIndices; ++i) indexData[i] = buf[i];
+                    break;
+                }
+                case TG3_COMPONENT_TYPE_UNSIGNED_SHORT: {
+                    const uint16_t* buf = reinterpret_cast<const uint16_t*>(indexBuf.data.data + indexViewBuf.byte_offset + indexAccessor.byte_offset);
+                    for (int i = 0; i < numIndices; ++i) indexData[i] = buf[i];
+                    break;
+                }
+                case TG3_COMPONENT_TYPE_UNSIGNED_INT: {
+                    const uint32_t* buf = reinterpret_cast<const uint32_t*>(indexBuf.data.data + indexViewBuf.byte_offset + indexAccessor.byte_offset);
+                    for (int i = 0; i < numIndices; ++i) indexData[i] = buf[i];
+                    break;
+                }
+                default:
+                    throw std::runtime_error("Unsupported index type");
+            }
           
             // gather vertex attributes
             for (int k = 0; k < prim.attributes_count; ++k) {
@@ -201,30 +235,18 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                 std::string attrib_name(attr.key.data, attr.key.len);
                 int attr_i = attr.value;
 
-                std::cout << attrib_name << " value: " << attr_i << std::endl;
-
                 if (attrib_name == "POSITION") { // process position buffer
 
                     // get position info
                     const tg3_accessor& posAccessor = model.accessors[attr_i];
                     const tg3_buffer_view& posViewBuf = model.buffer_views[posAccessor.buffer_view];
                     const tg3_buffer& posBuf = model.buffers[posViewBuf.buffer];
+                    // position coodinates are always floats 
                     const glm::vec3* positionData = reinterpret_cast<const glm::vec3*>(posBuf.data.data + posViewBuf.byte_offset + posAccessor.byte_offset);
-
-                    /*uint64_t count = posAccessor.count;
-                    int32_t numCpts = posAccessor.type;
-                    int32_t type = posAccessor.component_type;
-
-                    uint32_t stride = posViewBuf.byte_stride;
-
-                    if (stride == 0) {
-                        // generalize with numCpts and type
-                        stride = 3 * sizeof(float);
-                    }*/
 
                     // want to store triangle info that we can iterate through later to test intersections 
 
-                    for (int idx = 0; idx < indexAccessor.count; idx += 3) {
+                    for (int idx = 0; idx < numIndices; idx += 3) {
                         // 3 indices = 1 triangle
 
                         Triangle tri;
@@ -248,8 +270,17 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
 
                         tri.normal = normal;
 
+                        // calculate centroid (in world space for BVH)
+                        glm::vec3 centroid = (pos0 + pos1 + pos2) * 0.3333f;
+                        tri.centroid = glm::vec3(transform * glm::vec4(centroid, 1.0f));
+
                         // material id
                         tri.materialid = MatNameToID[modelData["MATERIAL"]];
+
+                        // transforms
+                        tri.transform = transform;
+                        tri.inverseTransform = inverse;
+                        tri.invTranspose = inverseTranspose;
 
                         triangles.push_back(tri);
                     }

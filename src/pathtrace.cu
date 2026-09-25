@@ -19,10 +19,12 @@
 #include "utilities.h"
 #include "intersections.h"
 #include "interactions.h"
+#include "bvh.h"
 
 #define ERRORCHECK 1
 #define STREAM_COMPACTION 1
 #define MATERIAL_SORTING 0
+#define USE_BVH 1
 #define PI 3.141592653589793238462643383279502884
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -92,6 +94,8 @@ static ShadeableIntersection* dev_intersections = NULL;
 // ...
 static Triangle* dev_triangles = NULL;
 static Geom* dev_lights = NULL;
+static BVHNode* dev_nodes = NULL;
+static int* dev_triPtrs = NULL;
 
 void InitDataContainer(GuiDataContainer* imGuiData)
 {
@@ -101,6 +105,10 @@ void InitDataContainer(GuiDataContainer* imGuiData)
 void pathtraceInit(Scene* scene)
 {
     hst_scene = scene;
+
+    // build BVH
+    BVH bvh;
+    bvh.buildBVH(scene);
 
     const Camera& cam = hst_scene->state.camera;
     const int pixelcount = cam.resolution.x * cam.resolution.y;
@@ -126,6 +134,12 @@ void pathtraceInit(Scene* scene)
     cudaMalloc(&dev_triangles, scene->triangles.size() * sizeof(Triangle));
     cudaMemcpy(dev_triangles, scene->triangles.data(), scene->triangles.size() * sizeof(Triangle), cudaMemcpyHostToDevice);
 
+    cudaMalloc(&dev_nodes, bvh.nodesUsed * sizeof(BVHNode));
+    cudaMemcpy(dev_nodes, bvh.bvhNodePool.data(), bvh.nodesUsed * sizeof(BVHNode), cudaMemcpyHostToDevice);
+
+    cudaMalloc(&dev_triPtrs, scene->triangles.size() * sizeof(int));
+    cudaMemcpy(dev_triPtrs, bvh.triIdx.data(), scene->triangles.size() * sizeof(int), cudaMemcpyHostToDevice);
+
     checkCUDAError("pathtraceInit");
 }
 
@@ -139,6 +153,8 @@ void pathtraceFree()
     // TODO: clean up any extra device memory you created
     cudaFree(dev_lights);
     cudaFree(dev_triangles);
+    cudaFree(dev_nodes);
+    cudaFree(dev_triPtrs);
 
     checkCUDAError("pathtraceFree");
 }
@@ -214,12 +230,14 @@ __global__ void computeIntersections(
     int geoms_size,
     Triangle* triangles,
     int triangles_size,
-    ShadeableIntersection* intersections)
+    ShadeableIntersection* intersections,
+    BVHNode* nodes,
+    int* triPtrs)
 {
     int path_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-    int s = triangles_size - 1;
-    auto tri = triangles[s].positions[0];
+    //int s = triangles_size - 1;
+    //auto tri = triangles[s].positions[0];
 
     if (path_index < num_paths)
     {
@@ -249,8 +267,6 @@ __global__ void computeIntersections(
             {
                 t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
             }
-            // TODO: add more intersection tests here... triangle? metaball? CSG?
-
 
             // Compute the minimum t from the intersection tests to determine what
             // scene geometry object was hit first.
@@ -275,28 +291,42 @@ __global__ void computeIntersections(
             intersections[path_index].surfaceNormal = normal;
         }
 
-        // triangle intersection test 
+        #if USE_BVH
+            // can we get a closer intersection 
 
-        int hit_tri_index = -1;
+            int hit_tri_index = -1;
+             
+            IntersectBVH(pathSegment.ray, nodes, triangles, triPtrs, t_min, intersect_point, normal, outside, hit_tri_index);
 
-        for (int i = 0; i < triangles_size; i++) {
-            Triangle& tri = triangles[i];
-
-            t = triangleIntersectionTest(tri, pathSegment.ray, tmp_intersect, tmp_normal, outside);
-
-            if (t > 0.0f && t_min > t) {
-                t_min = t;
-                hit_tri_index = i;
-                intersect_point = tmp_intersect;
-                normal = tmp_normal;
+            if (hit_tri_index != -1) {
+                intersections[path_index].t = t_min;
+                intersections[path_index].materialId = triangles[hit_tri_index].materialid;
+                intersections[path_index].surfaceNormal = normal;
             }
-        }
+        #else 
+            // naive triangle intersection test 
 
-        if (hit_tri_index != -1) { // hit a triangle
-            intersections[path_index].t = t_min;
-            intersections[path_index].materialId = triangles[hit_tri_index].materialid;
-            intersections[path_index].surfaceNormal = normal;
-        }
+            int hit_tri_index = -1;
+
+            for (int i = 0; i < triangles_size; i++) {
+                Triangle& tri = triangles[i];
+
+                t = triangleIntersectionTest(tri, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+
+                if (t > 0.0f && t_min > t) {
+                    t_min = t;
+                    hit_tri_index = i;
+                    intersect_point = tmp_intersect;
+                    normal = tmp_normal;
+                }
+            }
+
+            if (hit_tri_index != -1) { // hit a triangle
+                intersections[path_index].t = t_min;
+                intersections[path_index].materialId = triangles[hit_tri_index].materialid;
+                intersections[path_index].surfaceNormal = normal;
+            }
+        #endif
     }
 }
 
@@ -468,7 +498,9 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             hst_scene->geoms.size(),
             dev_triangles,
             hst_scene->triangles.size(),
-            dev_intersections
+            dev_intersections,
+            dev_nodes,
+            dev_triPtrs
         );
         checkCUDAError("trace one bounce");
         cudaDeviceSynchronize();

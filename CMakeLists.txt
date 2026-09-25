@@ -60,6 +60,7 @@ set(headers
     src/utilities.h
     src/tiny_gltf_v3.h
     src/tinygltf_json_c.h
+    src/bvh.h
 )
 
 set(sources
@@ -73,6 +74,8 @@ set(sources
     src/scene.cpp
     src/utilities.cpp
     src/tiny_gltf_v3.c
+    src/bvh.cpp
+    src/bvh.cu
 )
 
 set(imgui_headers
