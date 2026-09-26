@@ -27,6 +27,20 @@
             "TYPE":"Specular",
             "ALBEDO":[0.98, 0.98, 0.98],
             "ROUGHNESS":0.0
+        },
+        "glass":
+        {
+            "TYPE":"Dielectric",
+            "ALBEDO":[0.0, 0.0, 0.0],
+            "IOR": 1.5,
+            "ABSORPTION":[0.0, 0.0, 0.0]
+        },
+        "tinted_glass":
+        {
+          "TYPE":"Dielectric",
+          "ALBEDO":[0.0, 0.0, 0.0],
+          "IOR":1.5,
+          "ABSORPTION": [0.04, 0.30, 0.009]
         }
     },
     "Camera":
@@ -85,19 +99,19 @@
             "SCALE":[0.01,10.0,10.0]
         },
         {
-            "TYPE": "sphere",
-            "MATERIAL": "specular_white",
-            "TRANS": [ -1.0, 4.0, -1.0 ],
-            "ROTAT": [ 0.0, 0.0, 0.0 ],
-            "SCALE": [ 3.0, 3.0, 3.0 ]
+          "TYPE": "sphere",
+          "MATERIAL": "tinted_glass",
+          "TRANS": [ -1.0, 4.0, -1.0 ],
+          "ROTAT": [ 0.0, 0.0, 0.0 ],
+          "SCALE": [ 3.0, 3.0, 3.0 ]
         },
-      {
-        "TYPE": "mesh",
-        "MATERIAL": "diffuse_white",
-        "FILEPATH": "models\\eagle.gltf",
-        "TRANS": [ 2.0, 2.0, 0.0 ],
-        "ROTAT": [ 90.0, 180.0, 0.0 ],
-        "SCALE": [ 10.0, 10.0, 10.0 ]
-      }
+        {
+          "TYPE": "mesh",
+          "MATERIAL": "diffuse_white",
+          "FILEPATH": "models\\eagle.gltf",
+          "TRANS": [ 2.0, 2.0, 0.0 ],
+          "ROTAT": [ 90.0, 180.0, 0.0 ],
+          "SCALE": [ 10.0, 10.0, 10.0 ]
+        }
     ]
 }

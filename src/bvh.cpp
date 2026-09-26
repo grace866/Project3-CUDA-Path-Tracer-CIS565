@@ -2,6 +2,9 @@
 
 void BVH::buildBVH(Scene* scene) {
 	int numTris = scene->triangles.size();
+	
+	if (numTris == 0) return;
+
 	int rootNodeIdx = 0; 
 	nodesUsed = 1;
 

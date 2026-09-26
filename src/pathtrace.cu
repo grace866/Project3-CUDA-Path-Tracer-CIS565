@@ -289,25 +289,23 @@ __global__ void computeIntersections(
             intersections[path_index].t = t_min;
             intersections[path_index].materialId = geoms[hit_geom_index].materialid;
             intersections[path_index].surfaceNormal = normal;
+            intersections[path_index].outside = outside;
         }
 
-        #if USE_BVH
-            // can we get a closer intersection 
-
+        // test triangle intersections
+        if (triangles_size != 0) {
             int hit_tri_index = -1;
-             
+
+            #if USE_BVH
             IntersectBVH(pathSegment.ray, nodes, triangles, triPtrs, t_min, intersect_point, normal, outside, hit_tri_index);
 
             if (hit_tri_index != -1) {
                 intersections[path_index].t = t_min;
                 intersections[path_index].materialId = triangles[hit_tri_index].materialid;
                 intersections[path_index].surfaceNormal = normal;
+                intersections[path_index].outside = outside;
             }
-        #else 
-            // naive triangle intersection test 
-
-            int hit_tri_index = -1;
-
+            #else 
             for (int i = 0; i < triangles_size; i++) {
                 Triangle& tri = triangles[i];
 
@@ -325,8 +323,10 @@ __global__ void computeIntersections(
                 intersections[path_index].t = t_min;
                 intersections[path_index].materialId = triangles[hit_tri_index].materialid;
                 intersections[path_index].surfaceNormal = normal;
+                intersections[path_index].outside = outside;
             }
-        #endif
+            #endif
+        }
     }
 }
 
@@ -378,7 +378,11 @@ __global__ void shadeFakeMaterial(
                     scatterRayFake(pathSegments[idx], intersect, intersection.surfaceNormal, material, rng);
                 }
                 else if (material.type == METALLICWORKFLOW) {
-                    scatterRay(pathSegments[idx], intersect, intersection.surfaceNormal, material, rng);
+                    scatterRayOpaque(pathSegments[idx], intersect, intersection.surfaceNormal, material, rng);
+                }
+                else if (material.type == DIELECTRIC) {
+                    scatterRayTransparent(pathSegments[idx], intersect, intersection.surfaceNormal, material, intersection.outside, rng);
+                    
                 }
 
                 /*float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));

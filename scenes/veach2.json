@@ -5,7 +5,7 @@
       "ALBEDO": [ 1.0, 1.0, 1.0 ],
       "ROUGHNESS": -1.0,
       "METALLIC": 0.0,
-      "EMITTANCE": 15.0
+      "EMITTANCE": 20.0
     },
     "light2": {
       "TYPE": "Emitting",
@@ -32,24 +32,24 @@
       "TYPE": "MetallicWorkflow",
       "ALBEDO": [ 0.99, 0.99, 0.99 ],
       "ROUGHNESS": 0.5,
-      "METALLIC": 1.0
+      "METALLIC": 0.5
     },
     "semi_gloss": {
       "TYPE": "MetallicWorkflow",
       "ALBEDO": [ 0.99, 0.99, 0.99 ],
-      "ROUGHNESS": 0.1,
+      "ROUGHNESS": 0.25,
       "METALLIC": 1.0
     },
     "gloss": {
       "TYPE": "MetallicWorkflow",
       "ALBEDO": [ 0.99, 0.99, 0.99 ],
-      "ROUGHNESS": 0.02,
+      "ROUGHNESS": 0.1,
       "METALLIC": 1.0
     },
     "ultra_gloss": {
       "TYPE": "MetallicWorkflow",
       "ALBEDO": [ 0.99, 0.99, 0.99 ],
-      "ROUGHNESS": 0.0,
+      "ROUGHNESS": 0.02,
       "METALLIC": 1.0
     },
     "backdrop": {

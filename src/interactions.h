@@ -16,33 +16,33 @@ __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(
     thrust::default_random_engine& rng);
 
 __host__ __device__ glm::vec3 calculateReflectedRayDirection(
+    glm::vec3 wo,
+    glm::vec3 normal);
+
+__host__ __device__ glm::vec3 calculateRefractedRayDirection(
+    glm::vec3 wo,
     glm::vec3 normal,
-    glm::vec3 wo
-);
+    float ri);
 
-__host__ __device__ glm::vec3 sphericalToCartesian(
-    float theta,
-    float phi
-);
-
-__host__ __device__ glm::vec3 schlickFresnel(
+__host__ __device__ glm::vec3 metallicFresnel(
     glm::vec3 r0,
-    float radians
-);
+    float cosine);
+
+__host__ __device__ float transmissiveFresnel(
+    float r0,
+    float cosine);
 
 __host__ __device__ float smithGGXMaskingShadowing(
     glm::vec3 wi,
     glm::vec3 wo,
-    float a2
-);
+    float a2);
 
 __host__ __device__ void sampleGGXNorm(
     const Material& m,
     glm::vec3 wo,
     glm::vec3& wi,
     glm::vec3& reflectance,
-    thrust::default_random_engine& rng
-);
+    thrust::default_random_engine& rng);
 
 /*__host__ __device__ void uniformSampleOneLight(
     const int numLights,
@@ -75,11 +75,19 @@ __host__ __device__ void sampleGGXNorm(
  *
  * You may need to change the parameter list for your purposes!
  */
-__host__ __device__ void scatterRay(
+__host__ __device__ void scatterRayOpaque(
     PathSegment& pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
     const Material& m,
+    thrust::default_random_engine& rng);
+
+__host__ __device__ void scatterRayTransparent(
+    PathSegment& pathSegment,
+    glm::vec3 intersect,
+    glm::vec3 normal,
+    const Material& m,
+    bool outside,
     thrust::default_random_engine& rng);
 
 __host__ __device__ void scatterRayFake(

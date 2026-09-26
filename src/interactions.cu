@@ -5,6 +5,8 @@
 #include <thrust/random.h>
 #include <cmath>
 
+// calculating ray direction: diffuse, reflection, refraction
+
 __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(
     glm::vec3 normal,
     thrust::default_random_engine &rng)
@@ -46,13 +48,53 @@ __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(
 }
 
 __host__ __device__ glm::vec3 calculateReflectedRayDirection(
-    glm::vec3 normal,
-    glm::vec3 wo) {
+    glm::vec3 wo,
+    glm::vec3 normal) {
 
     glm::vec3 wi = glm::reflect(wo, normal);
 
     return wi;
 }
+
+__host__ __device__ glm::vec3 calculateRefractedRayDirection(
+    glm::vec3 wo,
+    glm::vec3 normal,
+    float ri) {
+
+    float cosTheta = fminf(glm::dot(-wo, normal), 1.0f);
+    glm::vec3 rPerp = ri * (wo + cosTheta * normal);
+    glm::vec3 rParallel = -sqrt(fabsf(1.0f - (glm::length(rPerp) * glm::length(rPerp)))) * normal;
+
+    return rPerp + rParallel;
+}
+
+
+// 2 implementations of schlick Fresnel approximation 
+
+__host__ __device__ glm::vec3 metallicFresnel(
+    glm::vec3 r0,
+    float cosine) {
+    float exponential = pow(1.0f - cosine, 5.0f);
+    return r0 + (1.0f - r0) * exponential;
+}
+
+__host__ __device__ glm::vec3 diffuseFresnel(
+    glm::vec3 r0,
+    float r,
+    float cosine) {
+    float exponential = pow(1.0f - cosine, 5.0f);
+    
+    return r0 + (glm::max(glm::vec3(1.0f - r), r0) - r0) * exponential;
+}
+
+__host__ __device__ float transmissiveFresnel(
+    float r0, 
+    float cosine) {
+    float exponential = pow(1.0f - cosine, 5.0f);
+    return r0 + (1.0f - r0) * exponential;
+}
+
+// helpers for computing GGX distribution for Cook-Torrence specular lobe
 
 __host__ __device__ glm::vec3 sphericalToCartesian(
     float theta,
@@ -65,12 +107,22 @@ __host__ __device__ glm::vec3 sphericalToCartesian(
     return glm::vec3(x, y, z);
 }
 
-__host__ __device__ glm::vec3 schlickFresnel(
-    glm::vec3 r0, 
-    float radians) {
-    float exponential = pow(1.0f - radians, 5.0f);
-    return r0 + (1.0f - r0) * exponential;
+__host__ __device__ float clamp(
+    float value,
+    float min,
+    float max
+) {
+    if (value < min) {
+        return min;
+    }
+    else if (value > max) {
+        return max;
+    }
+
+    return value;
 }
+
+// using GGX distribution, compute specular lobe 
 
 __host__ __device__ float smithGGXMaskingShadowing(
     glm::vec3 wi,
@@ -90,20 +142,6 @@ __host__ __device__ float smithGGXMaskingShadowing(
     return 2.0f * dotNL * dotNV / (denomA + denomB);
 }
 
-__host__ __device__ float clamp(
-    float value,
-    float min,
-    float max
-) {
-    if (value < min) {
-        return min;
-    }
-    else if (value > max) {
-        return max;
-    }
-
-    return value;
-}
 
 __host__ __device__ void sampleGGXNorm(
     const Material &m,
@@ -145,7 +183,7 @@ __host__ __device__ void sampleGGXNorm(
     if (wi.y > 0.0f && wiwm > 0.0f) {
 
         // more reflected at grazing angles
-        glm::vec3 F = schlickFresnel(m.color, wiwm);
+        glm::vec3 F = metallicFresnel(m.color, wiwm);
         // less reflecting when there is shadowing/masking 
         float G = smithGGXMaskingShadowing(wi, wo, a2);
 
@@ -161,51 +199,19 @@ __host__ __device__ void sampleGGXNorm(
     }
 }
 
-// light sampling 
+// scatter ray functions 
 
-/*__host__ __device__ void uniformSampleOneLight(
-    const int numLights,
-    const glm::vec3 &ref,
-    const Material *materials,
-    const Geom* lights,
-    thrust::default_random_engine& rng) {
-
-    if (numLights == 0) return;
-
-    // uniformly sample a light in the scene 
-    int light_i = min((int)(u01(rng) * numLights), numLights - 1);
-    const Geom& light = lights[light_i];
-
-    glm::vec3 wi;
-    float pdf;
-    // sample point on light and return corresponding wi and pdf
-    
-    switch (light.type) {
-        case LightType::AREA:
-            sampleIncomingAreaLight();
-    }
-
-
-}*/
-
-__host__ __device__ void scatterRay(
+__host__ __device__ void scatterRayOpaque(
     PathSegment &pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
     const Material &m,
     thrust::default_random_engine &rng)
 {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
-
-    // have to update the pathSegment
-    // ray direction, color contribution, remainingbounces
+ 
     thrust::uniform_real_distribution<float> u01(0, 1);
 
-    // pbr metallic workflow model 
-
-    // build frame around normal 
+    // build frame around normal (tangent space) 
     glm::vec3 up = normal;
     glm::vec3 directionNotNormal;
     if (abs(normal.x) < SQRT_OF_ONE_THIRD)
@@ -223,27 +229,27 @@ __host__ __device__ void scatterRay(
     glm::vec3 t = glm::normalize(glm::cross(up, directionNotNormal));
     glm::vec3 b = glm::normalize(glm::cross(up, t));
 
-    // transformation local -> world
+    // tangent space -> world
     glm::mat3 toWorld(t, up, b);
 
+    // view direction in tangent space 
     glm::vec3 wo = glm::inverse(toWorld) * (-pathSegment.ray.direction);
-
-    float F;
-    if (m.metallic > 0.5f) {
-        glm::vec3 metallicF = schlickFresnel(m.color, glm::dot(normal, wo));
-        F = metallicF.g; // ??
-    }
-    else {
-        // approximate for dielectric (for now?) 
-        F = 0.04;
-    }
+    
+    float cosTheta = glm::dot(normal, - pathSegment.ray.direction);
+    glm::vec3 metallicF = metallicFresnel(m.color, cosTheta);
+    glm::vec3 diffuseF = diffuseFresnel(m.color, m.roughness, cosTheta);
+    // interpolate F based on m.metallic
+    glm::vec3 fresnel = (1.0f - m.metallic) * diffuseF + (m.metallic) * metallicF;
+    // calculate luminance (in one value, how much light is reflected)
+    float F = glm::dot(metallicF, glm::vec3(0.2126f, 0.7152f, 0.0722f)); // = ks for cook-torrence
 
     float p = u01(rng);
     // sample ray 
     glm::vec3 wi; 
     glm::vec3 reflectance;
 
-    if (m.metallic > 0.5f) { // sample specular lobe 
+    // missing probability normalization
+    if (p < F) { // sample specular lobe 
         sampleGGXNorm(m, wo, wi, reflectance, rng);
     }
     else { // sample diffuse lobe 
@@ -257,6 +263,66 @@ __host__ __device__ void scatterRay(
     pathSegment.remainingBounces--;
 }
 
+__host__ __device__ void scatterRayTransparent(
+    PathSegment& pathSegment,
+    glm::vec3 intersect,
+    glm::vec3 normal,
+    const Material& m,
+    bool outside,
+    thrust::default_random_engine& rng) {
+
+    thrust::uniform_real_distribution<float> u01(0, 1);
+
+    bool frontFace = outside; // from intersection: did ray originate inside or outside object
+    // assuming object in air (IOR = 1.0)
+    // calculate ratio of IOR for Snell's law 
+    float ri = frontFace ? (1 / m.refractionIndex) : m.refractionIndex;
+
+    // assumes that normal is opposite to ray direction 
+    float cosTheta = fminf(glm::dot(-pathSegment.ray.direction, normal), 1.0);
+
+    // equation is broken - cannot refract 
+    // total internal reflection (dense -> less dense & angle of incidence exceeds 
+    float sinTheta = sqrtf(1.0f - cosTheta * cosTheta);
+    bool cannotRefract = ri * sinTheta > 1.0;
+
+    // reflectivity varies with angle 
+    // approximate fresnel w/ Schlick (similar to that used in GGX but with different base reflectance) 
+    float r0 = pow((1 - ri) / (1 + ri), 2.0f);
+    float reflectance = transmissiveFresnel(r0, cosTheta);
+
+    // split reflection & refraction 
+    glm::vec3 dir;
+    //cannotRefract || reflectance > u01(rng)
+    if (cannotRefract || reflectance > u01(rng)) {
+        dir = calculateReflectedRayDirection(pathSegment.ray.direction, normal);
+    }
+    else {
+        dir = calculateRefractedRayDirection(pathSegment.ray.direction, normal, ri);
+    }
+
+    // use Beer's law of absorption to calculate attenuation (tint the ray)
+    // pure glass has attentuation = 1 (all channels survive bc no absorption) 
+    glm::vec3 attenuation = glm::vec3(1.0f);
+
+    //https://computergraphics.stackexchange.com/questions/297/is-this-the-correct-way-to-implement-beers-law
+    // instead of checking that ray is leaving, check that its not entering to take acc of entire path!
+
+    if (!outside) {
+        // calculate distance traveled 
+        float distTraveled = glm::length(intersect - pathSegment.ray.origin);
+        attenuation *= glm::exp(-m.absorption * distTraveled);
+    }
+
+    pathSegment.color *= attenuation;
+
+    // make sure that ray makes it out of medium! otherwise keep bouncing inside object -> color = white
+    // suggestion from previous class works
+    pathSegment.ray.origin = intersect + dir * (EPSILON * 500);
+    pathSegment.ray.direction = dir;
+    pathSegment.remainingBounces--;
+}
+
 __host__ __device__ void scatterRayFake(
     PathSegment& pathSegment,
     glm::vec3 intersect,
@@ -266,7 +332,7 @@ __host__ __device__ void scatterRayFake(
 
     glm::vec3 dir = glm::vec3(0.f, 0.f, 0.f);
     if (m.hasReflective == 1.0f) {
-        dir = calculateReflectedRayDirection(normal, pathSegment.ray.direction);
+        dir = calculateReflectedRayDirection(pathSegment.ray.direction, normal);
     }
     else {
         dir = calculateRandomDirectionInHemisphere(normal, rng);
@@ -274,8 +340,6 @@ __host__ __device__ void scatterRayFake(
 
     pathSegment.ray.origin = intersect + normal * EPSILON;
     pathSegment.ray.direction = dir;
-
-    glm::vec3 color = m.color;
-    pathSegment.color *= color;
+    pathSegment.color *= m.color;
     pathSegment.remainingBounces--;
 }

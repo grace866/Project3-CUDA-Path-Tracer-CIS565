@@ -48,7 +48,7 @@ __host__ __device__ float boxIntersectionTest(
     if (tmax >= tmin && tmax > 0) 
     {
         outside = true;
-        if (tmin <= 0) // no entrace = started inside geometry 
+        if (tmin <= 0) // no entrance = started inside geometry 
         {
             tmin = tmax;
             tmin_n = tmax_n;

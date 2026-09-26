@@ -25,13 +25,16 @@ enum class LightType {
 enum MatType {
     DIFFUSE,
     SPECULAR,
-    METALLICWORKFLOW
+    METALLICWORKFLOW,
+    DIELECTRIC
 };
 
 struct Ray
 {
     glm::vec3 origin;
     glm::vec3 direction;
+    glm::vec3 lastHit;
+    float distTraveled;
 };
 
 struct Geom
@@ -66,7 +69,10 @@ struct Material
     // for metallic workflow pbr
     float roughness;
     float metallic;
-    
+
+    // for diaeletric handling reflection & refraction 
+    float refractionIndex;
+    glm::vec3 absorption;
 };
 
 struct Camera
@@ -106,6 +112,7 @@ struct ShadeableIntersection
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
+  bool outside;
 };
 
 struct Triangle {

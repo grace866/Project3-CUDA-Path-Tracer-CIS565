@@ -55,6 +55,14 @@ void Scene::loadFromJSON(const std::string& jsonName)
             newMaterial.metallic = p["METALLIC"];
             newMaterial.roughness = p["ROUGHNESS"];
             newMaterial.type = METALLICWORKFLOW;
+        } 
+        else if (p["TYPE"] == "Dielectric") {
+            const auto& col = p["ALBEDO"];
+            newMaterial.color = glm::vec3(col[0], col[1], col[2]);
+            newMaterial.refractionIndex = p["IOR"];
+            const auto& transmit = p["ABSORPTION"];
+            newMaterial.absorption = glm::vec3(transmit[0], transmit[1], transmit[2]);
+            newMaterial.type = DIELECTRIC;
         }
         MatNameToID[name] = materials.size();
         materials.emplace_back(newMaterial);
