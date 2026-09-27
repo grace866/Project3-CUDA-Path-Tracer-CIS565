@@ -4,6 +4,7 @@
 #include "sceneStructs.h"
 #define TINYGLTF3_ENABLE_FS 1
 #include "tiny_gltf_v3.h"
+#include "tinyexr.h"
 
 #include <glm/gtc/matrix_inverse.hpp>
 //#include <glm/gtx/string_cast.hpp>
@@ -31,6 +32,10 @@ public:
     std::vector<Geom> lights;
     std::vector<Material> materials;
     std::vector<Triangle> triangles;
+    std::vector<float> envMapPixels;
+
+    int envMapWidth;
+    int envMapHeight;
 
     RenderState state;
 };

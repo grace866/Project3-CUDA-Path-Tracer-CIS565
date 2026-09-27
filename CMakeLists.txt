@@ -61,6 +61,8 @@ set(headers
     src/tiny_gltf_v3.h
     src/tinygltf_json_c.h
     src/bvh.h
+    src/tinyexr.h
+    src/miniz.h
 )
 
 set(sources
@@ -76,6 +78,7 @@ set(sources
     src/tiny_gltf_v3.c
     src/bvh.cpp
     src/bvh.cu
+    src/miniz.c
 )
 
 set(imgui_headers

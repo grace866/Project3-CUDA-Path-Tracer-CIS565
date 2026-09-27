@@ -25,7 +25,6 @@
 #define STREAM_COMPACTION 1
 #define MATERIAL_SORTING 0
 #define USE_BVH 1
-#define PI 3.141592653589793238462643383279502884
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -97,6 +96,9 @@ static Geom* dev_lights = NULL;
 static BVHNode* dev_nodes = NULL;
 static int* dev_triPtrs = NULL;
 
+static cudaArray* dev_mapdata = NULL;
+static cudaTextureObject_t dev_envmap = NULL;
+
 void InitDataContainer(GuiDataContainer* imGuiData)
 {
     guiData = imGuiData;
@@ -140,6 +142,34 @@ void pathtraceInit(Scene* scene)
     cudaMalloc(&dev_triPtrs, scene->triangles.size() * sizeof(int));
     cudaMemcpy(dev_triPtrs, bvh.triIdx.data(), scene->triangles.size() * sizeof(int), cudaMemcpyHostToDevice);
 
+    // for environment map 
+    if (scene->envMapPixels.size() > 0) {
+        cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float4>();
+
+        cudaMallocArray(&dev_mapdata, &channelDesc, scene->envMapWidth, scene->envMapHeight);
+        cudaMemcpy2DToArray(
+            dev_mapdata, 0, 0,
+            scene->envMapPixels.data(),
+            scene->envMapWidth * sizeof(float4),
+            scene->envMapWidth * sizeof(float4),
+            scene->envMapHeight,
+            cudaMemcpyHostToDevice
+        );
+
+        cudaResourceDesc resDesc = {};
+        resDesc.resType = cudaResourceTypeArray;
+        resDesc.res.array.array = dev_mapdata;
+
+        cudaTextureDesc texDesc = {};
+        texDesc.addressMode[0] = cudaAddressModeWrap;
+        texDesc.addressMode[1] = cudaAddressModeClamp;
+        texDesc.filterMode = cudaFilterModeLinear;
+        texDesc.readMode = cudaReadModeElementType;
+        texDesc.normalizedCoords = 1;
+
+        cudaCreateTextureObject(&dev_envmap, &resDesc, &texDesc, nullptr);
+    }
+    
     checkCUDAError("pathtraceInit");
 }
 
@@ -155,6 +185,9 @@ void pathtraceFree()
     cudaFree(dev_triangles);
     cudaFree(dev_nodes);
     cudaFree(dev_triPtrs);
+    cudaFree(dev_mapdata);
+
+    cudaDestroyTextureObject(dev_envmap);
 
     checkCUDAError("pathtraceFree");
 }
@@ -345,7 +378,8 @@ __global__ void shadeFakeMaterial(
     int num_paths,
     ShadeableIntersection* shadeableIntersections,
     PathSegment* pathSegments,
-    Material* materials)
+    Material* materials,
+    cudaTextureObject_t envmap)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < num_paths)
@@ -395,7 +429,29 @@ __global__ void shadeFakeMaterial(
             // This can be useful for post-processing and image compositing.
         }
         else {
-            pathSegments[idx].color = glm::vec3(0.0f);
+            glm::vec3 dir = pathSegments[idx].ray.direction;
+
+            if (envmap) {
+                // world -> spherical -> uv
+                float theta = atan2f(dir[2], dir[0]);
+                float phi = asinf(dir[1]);
+
+                float u = (theta + PI) / (TWO_PI);
+                float v = (phi + PI * 0.5f) / PI;
+
+                // sample from envmap
+                float4 radiance = tex2D<float4>(envmap, u, v);
+                float r = radiance.x;
+                float g = radiance.y;
+                float b = radiance.z;
+
+                pathSegments[idx].color *= glm::vec3(r, g, b);
+
+            }
+            else {
+                pathSegments[idx].color = glm::vec3(0.0f);
+            }
+
             pathSegments[idx].remainingBounces = 0;
         }
     }
@@ -532,7 +588,8 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             num_paths,
             dev_intersections,
             dev_paths,
-            dev_materials
+            dev_materials,
+            dev_envmap
         );
 
         #if STREAM_COMPACTION

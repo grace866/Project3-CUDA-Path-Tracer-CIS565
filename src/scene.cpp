@@ -1,3 +1,6 @@
+#define TINYEXR_IMPLEMENTATION
+#include "tinyexr.h"
+
 #include "scene.h"
 
 Scene::Scene(std::string filename)
@@ -112,6 +115,33 @@ void Scene::loadFromJSON(const std::string& jsonName)
     for (const auto& model : models) {
         // fill with triangle data 
         gltfLoad(model, MatNameToID);
+    }
+
+
+    // load environment map 
+    const auto& envMapData = sceneData["Environment Map"];
+    std::string envMapFile = envMapData["FILEPATH"];
+    if (envMapFile != "none") {
+        const char* envMap = envMapFile.c_str();
+        float* map;
+        int width;
+        int height;
+        const char* err = nullptr;
+
+        int ret = LoadEXR(&map, &width, &height, envMap, &err);
+
+        if (ret != TINYEXR_SUCCESS) {
+            if (err) {
+                fprintf(stderr, "ERR : %s\n", err);
+                FreeEXRErrorMessage(err);
+            }
+        }
+        else {
+            envMapPixels.assign(map, map + (width * height * 4));
+            envMapWidth = width;
+            envMapHeight = height;
+            free(map);
+        }
     }
 
     const auto& cameraData = sceneData["Camera"];

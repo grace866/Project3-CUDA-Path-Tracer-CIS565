@@ -18,8 +18,7 @@ enum GeomType
 
 enum class LightType {
     AREA,
-    POINT,
-    INFINITE
+    POINT
 };
 
 enum MatType {
