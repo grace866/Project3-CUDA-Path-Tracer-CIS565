@@ -117,6 +117,12 @@ source_group("ImGui\\Sources" FILES ${imgui_sources})
 #add_subdirectory(stream_compaction)  # TODO: uncomment if using your stream compaction
 
 add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers} ${imgui_sources} ${imgui_headers})
+
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+    TINYGLTF3_ENABLE_FS
+    TINYGLTF3_ENABLE_STB_IMAGE
+)
+
 target_link_libraries(${CMAKE_PROJECT_NAME}
     ${GL_LIBRARIES}
     #stream_compaction  # TODO: uncomment if using your stream compaction

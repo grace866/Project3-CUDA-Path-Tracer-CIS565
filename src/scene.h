@@ -33,6 +33,8 @@ public:
     std::vector<Material> materials;
     std::vector<Triangle> triangles;
     std::vector<float> envMapPixels;
+    std::vector<std::vector<uint8_t>> textures;
+    std::vector<glm::vec2> texDims;
 
     int envMapWidth;
     int envMapHeight;

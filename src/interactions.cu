@@ -1,5 +1,4 @@
 #include "interactions.h"
-
 #include "utilities.h"
 
 #include <thrust/random.h>
@@ -205,11 +204,21 @@ __host__ __device__ void scatterRayOpaque(
     PathSegment &pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
+    glm::vec3 texAlbedo,
     const Material &m,
     thrust::default_random_engine &rng)
 {
  
     thrust::uniform_real_distribution<float> u01(0, 1);
+
+    glm::vec3 albedo;
+    if (m.texIdx != -1) {
+        // sample
+        albedo = texAlbedo;
+    }
+    else {
+        albedo = m.color;
+    }
 
     // build frame around normal (tangent space) 
     glm::vec3 up = normal;
@@ -236,8 +245,8 @@ __host__ __device__ void scatterRayOpaque(
     glm::vec3 wo = glm::inverse(toWorld) * (-pathSegment.ray.direction);
     
     float cosTheta = glm::dot(normal, - pathSegment.ray.direction);
-    glm::vec3 metallicF = metallicFresnel(m.color, cosTheta);
-    glm::vec3 diffuseF = diffuseFresnel(m.color, m.roughness, cosTheta);
+    glm::vec3 metallicF = metallicFresnel(albedo, cosTheta);
+    glm::vec3 diffuseF = diffuseFresnel(albedo, m.roughness, cosTheta);
     // interpolate F based on m.metallic
     glm::vec3 fresnel = (1.0f - m.metallic) * diffuseF + (m.metallic) * metallicF;
     // calculate luminance (in one value, how much light is reflected)
@@ -254,7 +263,7 @@ __host__ __device__ void scatterRayOpaque(
     }
     else { // sample diffuse lobe 
         wi = calculateRandomDirectionInHemisphere(normal, rng);
-        reflectance = m.color;
+        reflectance = albedo;
     }
 
     pathSegment.ray.origin = intersect + normal * EPSILON;

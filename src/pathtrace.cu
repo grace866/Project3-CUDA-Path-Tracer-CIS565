@@ -99,6 +99,12 @@ static int* dev_triPtrs = NULL;
 static cudaArray* dev_mapdata = NULL;
 static cudaTextureObject_t dev_envmap = NULL;
 
+static cudaTextureObject_t* dev_textures = NULL;
+
+// so i can free later 
+static std::vector<cudaArray_t> host_texData;
+static std::vector<cudaTextureObject_t> host_textures;
+
 void InitDataContainer(GuiDataContainer* imGuiData)
 {
     guiData = imGuiData;
@@ -169,6 +175,48 @@ void pathtraceInit(Scene* scene)
 
         cudaCreateTextureObject(&dev_envmap, &resDesc, &texDesc, nullptr);
     }
+
+    // for textures 
+    if (scene->textures.size() > 0) {
+        for (int i = 0; i < scene->textures.size(); ++i) {
+            cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<uchar4>();
+
+            std::vector<uint8_t>& texture = scene->textures[i];
+            int texWidth = scene->texDims[i][0];
+            int texHeight = scene->texDims[i][1];
+
+            cudaArray_t dev_texData;
+            cudaMallocArray(&dev_texData, &channelDesc, texWidth, texHeight);
+            cudaMemcpy2DToArray(
+                dev_texData, 0, 0,
+                texture.data(),
+                texWidth * sizeof(uchar4),
+                texWidth * sizeof(uchar4),
+                texHeight,
+                cudaMemcpyHostToDevice
+            );
+
+            cudaResourceDesc resDesc = {};
+            resDesc.resType = cudaResourceTypeArray;
+            resDesc.res.array.array = dev_texData;
+
+            cudaTextureDesc texDesc = {};
+            texDesc.addressMode[0] = cudaAddressModeWrap;
+            texDesc.addressMode[1] = cudaAddressModeWrap;
+            texDesc.filterMode = cudaFilterModeLinear;
+            texDesc.readMode = cudaReadModeNormalizedFloat;
+            texDesc.normalizedCoords = 1;
+
+            cudaTextureObject_t dev_texture;
+            cudaCreateTextureObject(&dev_texture, &resDesc, &texDesc, nullptr);
+
+            host_texData.push_back(dev_texData);
+            host_textures.push_back(dev_texture);
+        }
+
+        cudaMalloc(&dev_textures, host_textures.size() * sizeof(cudaTextureObject_t));
+        cudaMemcpy(dev_textures, host_textures.data(), host_textures.size() * sizeof(cudaTextureObject_t), cudaMemcpyHostToDevice);
+    }
     
     checkCUDAError("pathtraceInit");
 }
@@ -185,18 +233,23 @@ void pathtraceFree()
     cudaFree(dev_triangles);
     cudaFree(dev_nodes);
     cudaFree(dev_triPtrs);
-    cudaFree(dev_mapdata);
 
+    cudaFree(dev_mapdata);
     cudaDestroyTextureObject(dev_envmap);
 
+    for (auto texture : host_textures) {
+        cudaDestroyTextureObject(texture);
+    }
+    host_textures.clear();
+
+    for (auto data : host_texData) {
+        cudaFree(data);
+    }
+    host_texData.clear();
+
+    cudaFree(dev_textures);
+
     checkCUDAError("pathtraceFree");
-}
-
-__host__ __device__ float boxMuller(float u1, float u2) {
-    float r = sqrt(-2.0f * log(u1));
-    float theta = 2.0f * PI * u2;
-
-    return r * cos(theta);
 }
 
 /**
@@ -220,20 +273,6 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
         segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
         // TODO: implement antialiasing by jittering the ray
-
-        /*// uniform angle distribution 
-        thrust::default_random_engine rng;
-        thrust::uniform_real_distribution<float> u01(0, 1);
-        float angle = u01(rng) * 2 * PI;
-
-        // gaussian length distribution 
-        // box-muller transform: normally distributed numbers given uniformly distributed random numbers
-        float u1 = u01(rng);
-        float u2 = u01(rng);
-        float length = boxMuller(u1, u2);
-
-        // jitter camera position
-        cam.position += glm::vec3(length * cos(angle), length * sin(angle), 0.f);*/
 
         thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, traceDepth);
         thrust::uniform_real_distribution<float> u01(0, 1);
@@ -268,9 +307,6 @@ __global__ void computeIntersections(
     int* triPtrs)
 {
     int path_index = blockIdx.x * blockDim.x + threadIdx.x;
-
-    //int s = triangles_size - 1;
-    //auto tri = triangles[s].positions[0];
 
     if (path_index < num_paths)
     {
@@ -330,15 +366,27 @@ __global__ void computeIntersections(
             int hit_tri_index = -1;
 
             #if USE_BVH
-            IntersectBVH(pathSegment.ray, nodes, triangles, triPtrs, t_min, intersect_point, normal, outside, hit_tri_index);
+            float u;
+            float v; 
+
+            IntersectBVH(pathSegment.ray, nodes, triangles, triPtrs, t_min, intersect_point, normal, outside, hit_tri_index, u, v);
 
             if (hit_tri_index != -1) {
                 intersections[path_index].t = t_min;
                 intersections[path_index].materialId = triangles[hit_tri_index].materialid;
                 intersections[path_index].surfaceNormal = normal;
                 intersections[path_index].outside = outside;
+
+                // interpolate uv and store in intersection for texture sampling 
+                glm::vec2 uv0 = triangles[hit_tri_index].uv[0];
+                glm::vec2 uv1 = triangles[hit_tri_index].uv[1];
+                glm::vec2 uv2 = triangles[hit_tri_index].uv[2];
+
+                glm::vec2 baryUV = (1.0f - u - v) * uv0 + u * uv1 + v * uv2;
+
+                intersections[path_index].uv = baryUV;
             }
-            #else 
+            #else // dont forget to update this before testing performance
             for (int i = 0; i < triangles_size; i++) {
                 Triangle& tri = triangles[i];
 
@@ -379,7 +427,8 @@ __global__ void shadeFakeMaterial(
     ShadeableIntersection* shadeableIntersections,
     PathSegment* pathSegments,
     Material* materials,
-    cudaTextureObject_t envmap)
+    cudaTextureObject_t envmap,
+    cudaTextureObject_t* textures)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < num_paths)
@@ -412,7 +461,15 @@ __global__ void shadeFakeMaterial(
                     scatterRayFake(pathSegments[idx], intersect, intersection.surfaceNormal, material, rng);
                 }
                 else if (material.type == METALLICWORKFLOW) {
-                    scatterRayOpaque(pathSegments[idx], intersect, intersection.surfaceNormal, material, rng);
+                    glm::vec3 texAlbedo;
+
+                    if (material.texIdx != -1) {
+                        float4 texel = tex2D<float4>(textures[material.texIdx], intersection.uv[0], intersection.uv[1]);
+                        texAlbedo = glm::vec3(texel.x, texel.y, texel.z);
+                    }
+                    texAlbedo = material.color;
+                  
+                    scatterRayOpaque(pathSegments[idx], intersect, intersection.surfaceNormal, texAlbedo, material, rng);
                 }
                 else if (material.type == DIELECTRIC) {
                     scatterRayTransparent(pathSegments[idx], intersect, intersection.surfaceNormal, material, intersection.outside, rng);
@@ -589,7 +646,8 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             dev_intersections,
             dev_paths,
             dev_materials,
-            dev_envmap
+            dev_envmap,
+            dev_textures
         );
 
         #if STREAM_COMPACTION

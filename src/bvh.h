@@ -31,4 +31,6 @@ __host__ __device__ void IntersectBVH(
 	glm::vec3& intersectionPoint,
 	glm::vec3& normal,
 	bool& outside,
-	int& hit_tri_index);
+	int& hit_tri_index,
+	float& u,
+	float& v);

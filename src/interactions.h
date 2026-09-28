@@ -79,6 +79,7 @@ __host__ __device__ void scatterRayOpaque(
     PathSegment& pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
+    glm::vec3 texAlbedo,
     const Material& m,
     thrust::default_random_engine& rng);
 

@@ -9,7 +9,9 @@ __host__ __device__ void IntersectBVH(
 	glm::vec3& intersectionPoint,
 	glm::vec3& normal,
 	bool& outside,
-	int& hit_tri_index) {
+	int& hit_tri_index,
+	float& u,
+	float& v) {
 
 	// chose DFS because queue size ~ depth of tree (2^64 is a lot of triangles) 
 	int stackNodeIndices[64];
@@ -20,6 +22,8 @@ __host__ __device__ void IntersectBVH(
 	bool tmp_outside;
 	glm::vec3 tmp_intersect;
 	glm::vec3 tmp_normal;
+	float tmp_u;
+	float tmp_v;
 
 	while (top > 0) { // while stack is non empty
 
@@ -35,7 +39,7 @@ __host__ __device__ void IntersectBVH(
 					const Triangle& tri = triangles[triIndex];
 
 					// write info into tmp variables
-					tmp_t = triangleIntersectionTest(tri, ray, tmp_intersect, tmp_normal, tmp_outside);
+					tmp_t = triangleIntersectionTest(tri, ray, tmp_intersect, tmp_normal, tmp_outside, tmp_u, tmp_v);
 
 					// update if intersection is the closest currently found 
 					if (tmp_t > 0.0f && t_min > tmp_t) {
@@ -44,6 +48,8 @@ __host__ __device__ void IntersectBVH(
 						normal = tmp_normal;
 						outside = tmp_outside;
 						hit_tri_index = triIndex;
+						u = tmp_u;
+						v = tmp_v;
 					}
 				}
 

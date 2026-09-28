@@ -16,11 +16,6 @@ enum GeomType
     MESH
 };
 
-enum class LightType {
-    AREA,
-    POINT
-};
-
 enum MatType {
     DIFFUSE,
     SPECULAR,
@@ -61,8 +56,9 @@ struct Material
     float hasRefractive;
     float indexOfRefraction;
 
-    // for lights
-    LightType lightType;
+    // point to texture in cudaTextureObjects_t array, -1 if none
+    int texIdx = -1;
+
     float emittance;
 
     // for metallic workflow pbr
@@ -112,6 +108,7 @@ struct ShadeableIntersection
   glm::vec3 surfaceNormal;
   int materialId;
   bool outside;
+  glm::vec2 uv;
 };
 
 struct Triangle {
@@ -119,6 +116,7 @@ struct Triangle {
     glm::vec3 positions[3];
     glm::vec3 normal;
     glm::vec3 centroid;
+    glm::vec2 uv[3];
 
     glm::mat4 transform;
     glm::mat4 inverseTransform;

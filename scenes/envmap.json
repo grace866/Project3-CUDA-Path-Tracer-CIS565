@@ -55,6 +55,14 @@
       "TRANS": [ -1.0, 4.0, -1.0 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
       "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "mesh",
+      "MATERIAL": "none",
+      "FILEPATH": "models\\tryload\\statuette_old_man.gltf",
+      "TRANS": [ 2.0, 2.0, 0.0 ],
+      "ROTAT": [ 90.0, 180.0, 0.0 ],
+      "SCALE": [ 10.0, 10.0, 10.0 ]
     }
   ]
 }

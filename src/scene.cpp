@@ -2,6 +2,52 @@
 #include "tinyexr.h"
 
 #include "scene.h"
+#include "stb_image.h"
+
+#include "stb_image_write.h"   // single header, same author as stb_image
+
+struct DecodedImage {
+    int w = 0;
+    int h = 0;
+    std::vector<uint8_t> pixels;
+};
+
+// trouble with new version of gltf's image decoding 
+// grab uris and decode with stb_image instead
+static bool decodeImg(const tg3_model& model, int imgIdx, const std::string& baseDir, DecodedImage& out) {
+    const tg3_image& img = model.images[imgIdx];
+    const uint8_t* bytes = nullptr; 
+    size_t len = 0;
+    std::vector<uint8_t> imgLoad;
+
+    if (img.uri.data && img.uri.len > 0) { // uri detected 
+        std::string uri(img.uri.data, img.uri.len);
+        // storing texture files externally 
+        std::ifstream f(baseDir + "/" + uri, std::ios::binary);
+        if (!f) return false; // return if file couldn't open
+
+
+        imgLoad.assign(std::istreambuf_iterator<char>(f), {});
+    }
+
+    // store loaded info
+    bytes = imgLoad.data(); 
+    len = imgLoad.size();
+
+    int n;
+    // returns pointer to raw pixels
+    stbi_uc* px = stbi_load_from_memory(bytes, (int)len, &out.w, &out.h, &n, 4);
+    if (!px) return false; // return if decoding failed
+
+    // assign info to DecodedImage struct
+    out.pixels.assign(px, px + (size_t)out.w * out.h * 4);
+
+    // free pointer 
+    stbi_image_free(px);
+
+    // successful decoding
+    return true;
+}
 
 Scene::Scene(std::string filename)
 {
@@ -209,6 +255,8 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
     const char* filepath = jsonpath.c_str();
     uint32_t filelen = jsonpath.size();
 
+    std::string baseDir = jsonpath.substr(0, jsonpath.find_last_of("/\\"));
+
     tg3_error_code err = tg3_parse_file(&model, &errors, filepath, filelen, &opts);
     if (err != TG3_OK) {
         // print errors
@@ -218,7 +266,7 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
         }
     }
 
-    // load model data
+    std::unordered_map<int, int> imageToTexIdx; // for mapping image source id to index in materials
 
     for (int i = 0; i < model.nodes_count; ++i) { // for each node
 
@@ -229,7 +277,6 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
         if (node.mesh == -1) {
             continue;
         }
-
 
         const tg3_mesh& mesh = model.meshes[mesh_i];
 
@@ -265,13 +312,95 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                 default:
                     throw std::runtime_error("Unsupported index type");
             }
-          
-            // gather vertex attributes
+
+            // get uv data
+            std::vector<glm::vec2> primUVs;
             for (int k = 0; k < prim.attributes_count; ++k) {
                 const tg3_str_int_pair& attr = prim.attributes[k];
 
                 std::string attrib_name(attr.key.data, attr.key.len);
                 int attr_i = attr.value;
+
+                if (attrib_name == "TEXCOORD_0") {
+                    const tg3_accessor& uvAccessor = model.accessors[attr_i];
+                    const tg3_buffer_view& uvViewBuf = model.buffer_views[uvAccessor.buffer_view];
+                    const tg3_buffer& uvBuf = model.buffers[uvViewBuf.buffer];
+
+                    const glm::vec2* uvData = reinterpret_cast<const glm::vec2*>(uvBuf.data.data + uvViewBuf.byte_offset + uvAccessor.byte_offset);
+
+                    for (int idx = 0; idx < uvAccessor.count; idx += 1) {
+                        glm::vec2 uv = uvData[idx];
+
+                        primUVs.push_back(uv);
+                    }
+                }
+                else {
+                    continue;
+                }
+            }
+
+            // create materials 
+            int primMaterialId = -1;
+            if (modelData["MATERIAL"] != "none") { // if material for mesh already specified in the JSON
+                primMaterialId = MatNameToID[modelData["MATERIAL"]];
+            }
+            else { // otherwise, build own material 
+                Material m = {};
+
+                // pre-populate with default opaque material 
+                m.type = METALLICWORKFLOW;
+                m.color = glm::vec3(1.0f);
+                m.metallic = 0.0f;
+                m.roughness = 1.0f;
+                m.texIdx = -1;
+
+                if (prim.material != -1) { // if material specified in gltf
+                    const tg3_material& mat = model.materials[prim.material];
+                    const tg3_pbr_metallic_roughness& pbr = mat.pbr_metallic_roughness;
+                    // update METALLICWORKFLOW parameters 
+                    m.metallic = (float)pbr.metallic_factor;
+                    m.roughness = (float)pbr.roughness_factor;
+                    m.color = glm::vec3(
+                        (float)pbr.base_color_factor[0],
+                        (float)pbr.base_color_factor[1],
+                        (float)pbr.base_color_factor[2]); // just white by default
+
+                    int texIdx = pbr.base_color_texture.index; 
+                    if (texIdx != -1) { // if texture specified for base color 
+                        int src = model.textures[texIdx].source;
+                        if (src != -1) { // if image source specified 
+                            auto it = imageToTexIdx.find(src); // look for image key (already decoded?) 
+                            if (it != imageToTexIdx.end()) {
+                                m.texIdx = it->second; // grab index
+                            }
+                            else { // otherwise, decode image
+                                DecodedImage imgRaw; 
+                                if (decodeImg(model, src, baseDir, imgRaw)) {
+                                    m.texIdx = (int)textures.size(); // store index
+                                    imageToTexIdx[src] = m.texIdx; // log it 
+                                    // store dimensions and pixel data to -> GPU later
+                                    textures.push_back(std::move(imgRaw.pixels));
+                                    texDims.push_back(glm::vec2(imgRaw.w, imgRaw.h));
+                                    printf("loaded tex %d: %dx%d\n", m.texIdx, imgRaw.w, imgRaw.h);
+                                }
+                                else {
+                                    printf("decode failed for image %d\n", src);
+                                }
+                            }
+                        }
+                    }
+                }
+                primMaterialId = (int)materials.size(); // update material id
+                materials.emplace_back(m);
+            }
+   
+            // populate triangle data
+            for (int k = 0; k < prim.attributes_count; ++k) {
+                const tg3_str_int_pair& attr = prim.attributes[k];
+
+                std::string attrib_name(attr.key.data, attr.key.len);
+                int attr_i = attr.value;
+
 
                 if (attrib_name == "POSITION") { // process position buffer
 
@@ -312,9 +441,18 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                         glm::vec3 centroid = (pos0 + pos1 + pos2) * 0.3333f;
                         tri.centroid = glm::vec3(transform * glm::vec4(centroid, 1.0f));
 
-                        // material id
-                        tri.materialid = MatNameToID[modelData["MATERIAL"]];
+                        // get materialId from earlier 
+                        tri.materialid = primMaterialId;
+                        
+                        // uvs 
+                        glm::vec2 uv0 = primUVs[i0];
+                        glm::vec2 uv1 = primUVs[i1];
+                        glm::vec2 uv2 = primUVs[i2];
 
+                        tri.uv[0] = uv0;
+                        tri.uv[1] = uv1;
+                        tri.uv[2] = uv2;
+                        
                         // transforms
                         tri.transform = transform;
                         tri.inverseTransform = inverse;
@@ -334,3 +472,4 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
     tg3_model_free(&model);
     tg3_error_stack_free(&errors);
 }
+

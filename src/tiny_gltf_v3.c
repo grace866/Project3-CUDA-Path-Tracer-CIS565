@@ -1,3 +1,15 @@
+#ifdef TINYGLTF3_ENABLE_FS
+#pragma message("TINYGLTF3_ENABLE_FS IS ENABLED")
+#else
+#pragma message("TINYGLTF3_ENABLE_FS IS NOT ENABLED")
+#endif
+
+#ifdef TINYGLTF3_ENABLE_STB_IMAGE
+#pragma message("TINYGLTF3_ENABLE_STB_IMAGE IS ENABLED")
+#else
+#pragma message("TINYGLTF3_ENABLE_STB_IMAGE IS NOT ENABLED")
+#endif
+
 #ifndef TINYGLTF3_SOURCE_INCLUDED_FROM_HEADER
 #include "tiny_gltf_v3.h"
 #endif

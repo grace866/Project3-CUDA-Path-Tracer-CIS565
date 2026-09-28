@@ -123,7 +123,9 @@ __host__ __device__ float triangleIntersectionTest(
     Ray r,
     glm::vec3 &intersectionPoint,
     glm::vec3 &normal,
-    bool &outside
+    bool &outside,
+    float &u,
+    float &v
 ) {
     // barycentric coordinates - representing a point as a weighted combination of vertices 
     glm::vec3 v0 = tri.positions[0];
@@ -155,11 +157,11 @@ __host__ __device__ float triangleIntersectionTest(
 
     // do barycentric coordinates actually fall inside the traingle? 
     glm::vec3 tVec = r.origin - v0;
-    float u = glm::dot(tVec, pVec) * invDet;
+    u = glm::dot(tVec, pVec) * invDet;
     if (u < 0 || u > 1) return -1;
 
     glm::vec3 qVec = glm::cross(tVec, e0);
-    float v = glm::dot(dir, qVec) * invDet;
+    v = glm::dot(dir, qVec) * invDet;
     if (v < 0 || u + v > 1) return -1;
 
     float t = glm::dot(e1, qVec) * invDet;

@@ -86,7 +86,7 @@
 /* Opt-in features (OFF by default) */
 /* #define TINYGLTF3_ENABLE_FS */
 /* #define TINYGLTF3_ENABLE_STB_IMAGE */
-/* #define TINYGLTF3_ENABLE_STB_IMAGE_WRITE */
+#define TINYGLTF3_ENABLE_STB_IMAGE_WRITE 
 
 /* Opt-out */
 /* #define TINYGLTF3_NO_IMAGE_DECODE */
