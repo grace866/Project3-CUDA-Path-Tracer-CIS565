@@ -5,7 +5,7 @@
         {
             "TYPE":"Emitting",
             "ALBEDO":[1.0, 1.0, 1.0],
-            "EMITTANCE":5.0
+            "EMITTANCE":10.0
         },
         "diffuse_white":
         {
@@ -111,10 +111,10 @@
     {
       "TYPE": "mesh",
       "MATERIAL": "none",
-      "FILEPATH": "models\\tryload\\statuette_old_man.gltf",
+      "FILEPATH": "models\\horse_statue_01_4k.gltf",
       "TRANS": [ 2.0, 2.0, 0.0 ],
-      "ROTAT": [ 90.0, 180.0, 0.0 ],
-      "SCALE": [ 10.0, 10.0, 10.0 ]
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 50.0, 50.0, 50.0 ]
     }
   ]
 }

@@ -58,6 +58,7 @@ struct Material
 
     // point to texture in cudaTextureObjects_t array, -1 if none
     int texIdx = -1;
+    int roughmapIdx = -1;
 
     float emittance;
 

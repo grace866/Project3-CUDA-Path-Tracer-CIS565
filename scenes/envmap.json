@@ -52,17 +52,17 @@
     {
       "TYPE": "sphere",
       "MATERIAL": "glass",
-      "TRANS": [ -1.0, 4.0, -1.0 ],
+      "TRANS": [ -1.0, 5.0, -1.0 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
       "SCALE": [ 3.0, 3.0, 3.0 ]
     },
     {
       "TYPE": "mesh",
       "MATERIAL": "none",
-      "FILEPATH": "models\\tryload\\statuette_old_man.gltf",
+      "FILEPATH": "models\\concrete_cat_statue_4k.gltf",
       "TRANS": [ 2.0, 2.0, 0.0 ],
-      "ROTAT": [ 90.0, 180.0, 0.0 ],
-      "SCALE": [ 10.0, 10.0, 10.0 ]
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 20.0, 20.0, 20.0 ]
     }
   ]
 }

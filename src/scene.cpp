@@ -251,7 +251,6 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
 
     // parse file
     std::string jsonpath = modelData["FILEPATH"];
-    //std::string jsonpath = "C:\\Users\\grttt\\source\\repos\\Project3-CUDA-Path-Tracer-CIS565\\models\\eagle.gltf";
     const char* filepath = jsonpath.c_str();
     uint32_t filelen = jsonpath.size();
 
@@ -266,7 +265,7 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
         }
     }
 
-    std::unordered_map<int, int> imageToTexIdx; // for mapping image source id to index in materials
+    std::unordered_map<int, int> idxToTex;
 
     for (int i = 0; i < model.nodes_count; ++i) { // for each node
 
@@ -352,36 +351,60 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                 m.color = glm::vec3(1.0f);
                 m.metallic = 0.0f;
                 m.roughness = 1.0f;
-                m.texIdx = -1;
 
                 if (prim.material != -1) { // if material specified in gltf
                     const tg3_material& mat = model.materials[prim.material];
                     const tg3_pbr_metallic_roughness& pbr = mat.pbr_metallic_roughness;
-                    // update METALLICWORKFLOW parameters 
-                    m.metallic = (float)pbr.metallic_factor;
-                    m.roughness = (float)pbr.roughness_factor;
-                    m.color = glm::vec3(
-                        (float)pbr.base_color_factor[0],
-                        (float)pbr.base_color_factor[1],
-                        (float)pbr.base_color_factor[2]); // just white by default
 
+                    // prepopulate metallic/roughness with multiplicative factor 
+                    m.metallic = pbr.metallic_factor;
+                    m.roughness = pbr.roughness_factor;
+
+                    // load metallic roughness info
+                    int roughIdx = pbr.metallic_roughness_texture.index;
+                    if (roughIdx != -1) {
+                        int src = model.textures[roughIdx].source;
+                        auto it = idxToTex.find(src);
+                        if (it != idxToTex.end()) {
+                            m.texIdx = it->second;
+                        }
+                        else {
+                            DecodedImage texRaw;
+                            if (decodeImg(model, src, baseDir, texRaw)) {
+                                m.roughmapIdx = (int)textures.size();
+                                idxToTex[src] = m.roughmapIdx; 
+                                textures.push_back(std::move(texRaw.pixels));
+                                texDims.push_back(glm::vec2(texRaw.w, texRaw.h));
+                                printf("loaded tex %d: %dx%d\n", m.roughmapIdx, texRaw.w, texRaw.h);
+                            }
+                            else {
+                                printf("decode failed for image %d\n", src);
+                            }
+                        }
+                    }
+                    
+                    // load base color info 
                     int texIdx = pbr.base_color_texture.index; 
                     if (texIdx != -1) { // if texture specified for base color 
                         int src = model.textures[texIdx].source;
                         if (src != -1) { // if image source specified 
-                            auto it = imageToTexIdx.find(src); // look for image key (already decoded?) 
-                            if (it != imageToTexIdx.end()) {
+                            auto it = idxToTex.find(src); // look for image key (already decoded?) 
+                            if (it != idxToTex.end()) {
                                 m.texIdx = it->second; // grab index
                             }
                             else { // otherwise, decode image
-                                DecodedImage imgRaw; 
-                                if (decodeImg(model, src, baseDir, imgRaw)) {
+                                DecodedImage texRaw; 
+                                if (decodeImg(model, src, baseDir, texRaw)) {
                                     m.texIdx = (int)textures.size(); // store index
-                                    imageToTexIdx[src] = m.texIdx; // log it 
+                                    idxToTex[src] = m.texIdx; // log it 
                                     // store dimensions and pixel data to -> GPU later
-                                    textures.push_back(std::move(imgRaw.pixels));
-                                    texDims.push_back(glm::vec2(imgRaw.w, imgRaw.h));
-                                    printf("loaded tex %d: %dx%d\n", m.texIdx, imgRaw.w, imgRaw.h);
+                                    printf("pixels=%zu expected=%zu first texel=%d %d %d %d\n",
+                                        texRaw.pixels.size(), (size_t)texRaw.w * texRaw.h * 4,
+                                        texRaw.pixels[0], texRaw.pixels[1], texRaw.pixels[2], texRaw.pixels[3]);
+                                    //stbi_write_png("debug_tex.png", texRaw.w, texRaw.h, 4, texRaw.pixels.data(), texRaw.w * 4);
+                                    textures.push_back(std::move(texRaw.pixels));
+                                    texDims.push_back(glm::vec2(texRaw.w, texRaw.h));
+                                    printf("loaded tex %d: %dx%d\n", m.texIdx, texRaw.w, texRaw.h);
                                 }
                                 else {
                                     printf("decode failed for image %d\n", src);
@@ -390,8 +413,10 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                         }
                     }
                 }
+
                 primMaterialId = (int)materials.size(); // update material id
                 materials.emplace_back(m);
+
             }
    
             // populate triangle data

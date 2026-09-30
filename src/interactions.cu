@@ -205,19 +205,23 @@ __host__ __device__ void scatterRayOpaque(
     glm::vec3 intersect,
     glm::vec3 normal,
     glm::vec3 texAlbedo,
-    const Material &m,
+    glm::vec3 texRough,
+    Material &m,
     thrust::default_random_engine &rng)
 {
  
     thrust::uniform_real_distribution<float> u01(0, 1);
 
-    glm::vec3 albedo;
+    glm::vec3 albedo = m.color;
     if (m.texIdx != -1) {
         // sample
         albedo = texAlbedo;
     }
-    else {
-        albedo = m.color;
+
+    if (m.roughmapIdx != -1) {
+        // sample
+        m.roughness = m.roughness * texRough[1];
+        m.metallic = m.metallic * texRough[2];
     }
 
     // build frame around normal (tangent space) 
@@ -248,26 +252,28 @@ __host__ __device__ void scatterRayOpaque(
     glm::vec3 metallicF = metallicFresnel(albedo, cosTheta);
     glm::vec3 diffuseF = diffuseFresnel(albedo, m.roughness, cosTheta);
     // interpolate F based on m.metallic
-    glm::vec3 fresnel = (1.0f - m.metallic) * diffuseF + (m.metallic) * metallicF;
+    // bruh smth wrong with diffuseF
+    glm::vec3 fresnel = (1.0f - m.metallic) * 0.04f + (m.metallic) * metallicF;
     // calculate luminance (in one value, how much light is reflected)
-    float F = glm::dot(metallicF, glm::vec3(0.2126f, 0.7152f, 0.0722f)); // = ks for cook-torrence
+    float F = glm::dot(fresnel, glm::vec3(0.2126f, 0.7152f, 0.0722f)); // = ks for cook-torrence
 
     float p = u01(rng);
     // sample ray 
     glm::vec3 wi; 
     glm::vec3 reflectance;
 
-    // missing probability normalization
+    glm::vec3 wiWorld;
     if (p < F) { // sample specular lobe 
         sampleGGXNorm(m, wo, wi, reflectance, rng);
+        wiWorld = toWorld * wi;
     }
     else { // sample diffuse lobe 
-        wi = calculateRandomDirectionInHemisphere(normal, rng);
+        wiWorld = calculateRandomDirectionInHemisphere(normal, rng);
         reflectance = albedo;
     }
 
     pathSegment.ray.origin = intersect + normal * EPSILON;
-    pathSegment.ray.direction = toWorld * wi;
+    pathSegment.ray.direction = wiWorld;
     pathSegment.color *= reflectance;
     pathSegment.remainingBounces--;
 }

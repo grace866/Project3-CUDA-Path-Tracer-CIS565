@@ -461,15 +461,22 @@ __global__ void shadeFakeMaterial(
                     scatterRayFake(pathSegments[idx], intersect, intersection.surfaceNormal, material, rng);
                 }
                 else if (material.type == METALLICWORKFLOW) {
-                    glm::vec3 texAlbedo;
 
+                    // sample texture 
+                    glm::vec3 texAlbedo = glm::vec3(0.0f, 0.0f, 0.0f);
                     if (material.texIdx != -1) {
                         float4 texel = tex2D<float4>(textures[material.texIdx], intersection.uv[0], intersection.uv[1]);
                         texAlbedo = glm::vec3(texel.x, texel.y, texel.z);
                     }
-                    texAlbedo = material.color;
-                  
-                    scatterRayOpaque(pathSegments[idx], intersect, intersection.surfaceNormal, texAlbedo, material, rng);
+
+                    // sample roughness map 
+                    glm::vec3 texRough = glm::vec3(0.0f, 0.0f, 0.0f);
+                    if (material.roughmapIdx != -1) {
+                        float4 texel = tex2D<float4>(textures[material.roughmapIdx], intersection.uv[0], intersection.uv[1]);
+                        texRough = glm::vec3(0.0f, texel.y, texel.z);
+                    }
+
+                    scatterRayOpaque(pathSegments[idx], intersect, intersection.surfaceNormal, texAlbedo, texRough, material, rng);
                 }
                 else if (material.type == DIELECTRIC) {
                     scatterRayTransparent(pathSegments[idx], intersect, intersection.surfaceNormal, material, intersection.outside, rng);
