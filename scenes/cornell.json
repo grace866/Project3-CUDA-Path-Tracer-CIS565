@@ -4,8 +4,8 @@
         "light":
         {
             "TYPE":"Emitting",
-            "ALBEDO":[1.0, 1.0, 1.0],
-            "EMITTANCE":10.0
+            "ALBEDO":[1, 0.953, 0.675],
+            "EMITTANCE":5.0
         },
         "diffuse_white":
         {
@@ -110,8 +110,8 @@
     },
     {
       "TYPE": "mesh",
-      "MATERIAL": "none",
-      "FILEPATH": "models\\horse_statue_01_4k.gltf",
+      "MATERIAL": "tinted_glass",
+      "FILEPATH": "models\\desk.gltf",
       "TRANS": [ 2.0, 2.0, 0.0 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
       "SCALE": [ 50.0, 50.0, 50.0 ]

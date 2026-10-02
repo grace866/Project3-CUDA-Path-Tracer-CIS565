@@ -6,7 +6,7 @@
 class BVH {
 private: 
 	void UpdateNodeBounds(Scene* scene, int nodeIdx);
-	void Subdivide(Scene* scene, int nodeIndx);
+	void Subdivide(Scene* scene, int nodeIdx, int depth);
 
 public: 
 	int nodesUsed = 0;

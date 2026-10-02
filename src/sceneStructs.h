@@ -118,10 +118,6 @@ struct Triangle {
     glm::vec3 normal;
     glm::vec3 centroid;
     glm::vec2 uv[3];
-
-    glm::mat4 transform;
-    glm::mat4 inverseTransform;
-    glm::mat4 invTranspose;
 };
 
 struct BVHNode

@@ -132,11 +132,6 @@ __host__ __device__ float triangleIntersectionTest(
     glm::vec3 v1 = tri.positions[1];
     glm::vec3 v2 = tri.positions[2];
 
-    // apply transformations 
-    v0 = glm::vec3(tri.transform * glm::vec4(v0, 1.0f));
-    v1 = glm::vec3(tri.transform * glm::vec4(v1, 1.0f));
-    v2 = glm::vec3(tri.transform * glm::vec4(v2, 1.0f));
-
     glm::vec3 e0 = v1 - v0;
     glm::vec3 e1 = v2 - v0;
 
@@ -169,7 +164,7 @@ __host__ __device__ float triangleIntersectionTest(
     if (t < EPSILON) return -1;
 
     intersectionPoint = r.origin + t * r.direction;
-    normal = glm::normalize(glm::vec3(tri.invTranspose * glm::vec4(tri.normal, 0.0f)));
+    normal = tri.normal;
     // started from inside or outside? depends on normal
     outside = glm::dot(normal, r.direction) < 0.0f;
 

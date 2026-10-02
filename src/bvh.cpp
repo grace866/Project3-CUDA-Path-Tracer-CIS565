@@ -20,7 +20,7 @@ void BVH::buildBVH(Scene* scene) {
 
 	// find bounds + keep splitting
 	UpdateNodeBounds(scene, rootNodeIdx);
-	Subdivide(scene, rootNodeIdx);
+	Subdivide(scene, rootNodeIdx, 0);
 }
 
 // helpers 
@@ -51,9 +51,9 @@ void BVH::UpdateNodeBounds(Scene* scene, int nodeIdx) {
 		Triangle& leafTri = scene->triangles[leafTriIndex];
 
 		// evaluate bounds using world space triangle positions 
-		glm::vec3 worldPos0 = glm::vec3(leafTri.transform * glm::vec4(leafTri.positions[0], 1.0f));
-		glm::vec3 worldPos1 = glm::vec3(leafTri.transform * glm::vec4(leafTri.positions[1], 1.0f));
-		glm::vec3 worldPos2 = glm::vec3(leafTri.transform * glm::vec4(leafTri.positions[2], 1.0f));
+		glm::vec3 worldPos0 = leafTri.positions[0];
+		glm::vec3 worldPos1 = leafTri.positions[1];
+		glm::vec3 worldPos2 = leafTri.positions[2];
 
 		node.aabbMin = minVec3(node.aabbMin, worldPos0);
 		node.aabbMin = minVec3(node.aabbMin, worldPos1);
@@ -64,10 +64,10 @@ void BVH::UpdateNodeBounds(Scene* scene, int nodeIdx) {
 	}
 }
 
-void BVH::Subdivide(Scene* scene, int nodeIdx) {
+/*void BVH::Subdivide(Scene* scene, int nodeIdx, int depth) {
 
 	BVHNode& node = bvhNodePool[nodeIdx]; 
-	if (node.triCount <= 2) return;
+	if (node.triCount <= 2 || depth >= 48) return;
 
 	// split plane axis and position 
 	glm::vec3 extent = node.aabbMax - node.aabbMin;
@@ -79,7 +79,7 @@ void BVH::Subdivide(Scene* scene, int nodeIdx) {
 	// split the group into 2 halves
 	int i = node.leftFirst;
 	int j = i + node.triCount - 1;
-	while (i < j) {
+	while (i <= j) {
 		if (scene->triangles[triIdx[i]].centroid[axis] < splitPos) {
 			i++;
 		}
@@ -114,6 +114,65 @@ void BVH::Subdivide(Scene* scene, int nodeIdx) {
 	UpdateNodeBounds(scene, rightChildIdx);
 
 	// recurse 
-	Subdivide(scene, leftChildIdx);
-	Subdivide(scene, rightChildIdx);
+	Subdivide(scene, leftChildIdx, depth + 1);
+	Subdivide(scene, rightChildIdx, depth + 1);
+}*/
+
+
+void BVH::Subdivide(Scene* scene, int nodeIdx, int depth) {
+	BVHNode& node = bvhNodePool[nodeIdx];
+	if (node.triCount <= 2 || depth >= 48) return;   // cap the depth (stack overflow problem) 
+
+	// bounds of the centroids, not of the triangles
+	glm::vec3 cmin(FLT_MAX), cmax(-FLT_MAX);
+	for (int k = 0; k < node.triCount; ++k) {
+		const glm::vec3& c = scene->triangles[triIdx[node.leftFirst + k]].centroid;
+		cmin = minVec3(cmin, c);
+		cmax = maxVec3(cmax, c);
+	}
+	glm::vec3 extent = cmax - cmin;
+	int axis = 0;
+	if (extent.y > extent.x) axis = 1;
+	if (extent.z > extent[axis]) axis = 2;
+	if (extent[axis] <= 0.0f) return;   
+
+	// midpoint of centroids
+	float splitPos = cmin[axis] + extent[axis] * 0.5f;
+	int i = node.leftFirst;
+	int j = i + node.triCount - 1;
+	while (i < j) {
+		if (scene->triangles[triIdx[i]].centroid[axis] < splitPos) i++;
+		else std::swap(triIdx[i], triIdx[j--]);
+	}
+	int leftCount = i - node.leftFirst;
+
+	// fallback: median split if the midpoint was lopsided
+	if (leftCount == 0 || leftCount == node.triCount ||
+		leftCount < node.triCount / 8 || leftCount > node.triCount * 7 / 8) {
+		int mid = node.leftFirst + node.triCount / 2;
+		std::nth_element(triIdx.begin() + node.leftFirst,
+			triIdx.begin() + mid,
+			triIdx.begin() + node.leftFirst + node.triCount,
+			[&](int a, int b) {
+				return scene->triangles[a].centroid[axis] <
+					scene->triangles[b].centroid[axis];
+			});
+		leftCount = node.triCount / 2;
+		i = mid;
+	}
+
+	int leftChildIdx = nodesUsed++;
+	int rightChildIdx = nodesUsed++;
+	bvhNodePool[leftChildIdx].leftFirst = node.leftFirst;
+	bvhNodePool[leftChildIdx].triCount = leftCount;
+	bvhNodePool[rightChildIdx].leftFirst = i;
+	bvhNodePool[rightChildIdx].triCount = node.triCount - leftCount;
+
+	node.leftFirst = leftChildIdx;
+	node.triCount = 0;
+	UpdateNodeBounds(scene, leftChildIdx);
+	UpdateNodeBounds(scene, rightChildIdx);
+
+	Subdivide(scene, leftChildIdx, depth + 1);
+	Subdivide(scene, rightChildIdx, depth + 1);
 }

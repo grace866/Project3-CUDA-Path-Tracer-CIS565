@@ -346,14 +346,46 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
             else { // otherwise, build own material 
                 Material m = {};
 
-                // pre-populate with default opaque material 
-                m.type = METALLICWORKFLOW;
-                m.color = glm::vec3(1.0f);
-                m.metallic = 0.0f;
-                m.roughness = 1.0f;
 
                 if (prim.material != -1) { // if material specified in gltf
                     const tg3_material& mat = model.materials[prim.material];
+                    // check transmission 
+                    const tg3_extras_ext& ext = mat.ext;
+                    uint32_t numExt = ext.extensions_count;
+
+                    bool isTransmissive = false;
+                    if (numExt > 0) {
+                        const tg3_extension* allExt = ext.extensions;
+
+                        // looking for 
+                        const char* key = "KHR_materials_transmission";
+                        size_t keyLen = strlen(key);
+
+                        for (int n = 0; n < numExt; ++n) {
+                            const tg3_extension& e = allExt[n];
+                            if (e.name.len == keyLen && memcmp(e.name.data, key, keyLen) == 0) {
+                                m.type = DIELECTRIC;
+                                m.color = glm::vec3(0.0f);
+                                m.refractionIndex = 1.05f;
+                                m.absorption = glm::vec3(0.0f);
+                                isTransmissive = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isTransmissive) {
+                        primMaterialId = (int)materials.size();
+                        materials.emplace_back(m);
+                        break;
+                    }
+
+                    // pre-populate with default opaque material 
+                    m.type = METALLICWORKFLOW;
+                    m.color = glm::vec3(1.0f);
+                    m.metallic = 0.0f;
+                    m.roughness = 1.0f;
+
                     const tg3_pbr_metallic_roughness& pbr = mat.pbr_metallic_roughness;
 
                     // prepopulate metallic/roughness with multiplicative factor 
@@ -453,14 +485,14 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                         glm::vec3 pos1 = positionData[i1];
                         glm::vec3 pos2 = positionData[i2];
 
-                        tri.positions[0] = pos0;
-                        tri.positions[1] = pos1;
-                        tri.positions[2] = pos2;
+                        // world space positions
+                        tri.positions[0] = glm::vec3(transform * glm::vec4(pos0, 1.0f));
+                        tri.positions[1] = glm::vec3(transform * glm::vec4(pos1, 1.0f));
+                        tri.positions[2] = glm::vec3(transform * glm::vec4(pos2, 1.0f));
 
                         // calculate normal
                         glm::vec3 normal = glm::normalize(glm::cross(pos1 - pos0, pos2 - pos0));
-
-                        tri.normal = normal;
+                        tri.normal = glm::normalize(glm::vec3(inverseTranspose * glm::vec4(normal, 0.0f)));
 
                         // calculate centroid (in world space for BVH)
                         glm::vec3 centroid = (pos0 + pos1 + pos2) * 0.3333f;
@@ -470,18 +502,15 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                         tri.materialid = primMaterialId;
                         
                         // uvs 
-                        glm::vec2 uv0 = primUVs[i0];
-                        glm::vec2 uv1 = primUVs[i1];
-                        glm::vec2 uv2 = primUVs[i2];
+                        if (!primUVs.empty()) {
+                            glm::vec2 uv0 = primUVs[i0];
+                            glm::vec2 uv1 = primUVs[i1];
+                            glm::vec2 uv2 = primUVs[i2];
 
-                        tri.uv[0] = uv0;
-                        tri.uv[1] = uv1;
-                        tri.uv[2] = uv2;
-                        
-                        // transforms
-                        tri.transform = transform;
-                        tri.inverseTransform = inverse;
-                        tri.invTranspose = inverseTranspose;
+                            tri.uv[0] = uv0;
+                            tri.uv[1] = uv1;
+                            tri.uv[2] = uv2;
+                        }
 
                         triangles.push_back(tri);
                     }
