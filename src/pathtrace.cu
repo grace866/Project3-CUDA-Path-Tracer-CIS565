@@ -550,8 +550,11 @@ __global__ void finalGather(int nPaths, glm::vec3* image, PathSegment* iteration
 
     if (index < nPaths)
     {
+        // simple clamping to reduce bright fireflies
+        glm::vec3 accColor = iterationPaths[index].color;
+        accColor = glm::min(accColor, glm::vec3(10.0f));
         PathSegment iterationPath = iterationPaths[index];
-        image[iterationPath.pixelIndex] += iterationPath.color;
+        image[iterationPath.pixelIndex] += accColor;
     }
 }
 
