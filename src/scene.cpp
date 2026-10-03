@@ -366,7 +366,7 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                             if (e.name.len == keyLen && memcmp(e.name.data, key, keyLen) == 0) {
                                 m.type = DIELECTRIC;
                                 m.color = glm::vec3(0.0f);
-                                m.refractionIndex = 1.05f;
+                                m.refractionIndex = 1.5f;
                                 m.absorption = glm::vec3(0.0f);
                                 isTransmissive = true;
                                 break;

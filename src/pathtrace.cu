@@ -20,11 +20,13 @@
 #include "intersections.h"
 #include "interactions.h"
 #include "bvh.h"
+#include "denoiser.h"
 
 #define ERRORCHECK 0
 #define STREAM_COMPACTION 1
 #define MATERIAL_SORTING 0
 #define USE_BVH 1
+#define USE_DENOISER 0
 #define FOCAL_DISTANCE 20
 #define APERTURE_RADIUS 0.15
 
@@ -105,6 +107,9 @@ static cudaTextureObject_t* dev_textures = NULL;
 static std::vector<cudaArray_t> host_texData;
 static std::vector<cudaTextureObject_t> host_textures;
 
+static glm::vec3* dev_avgImg = NULL;
+static glm::vec3* dev_denoised = NULL;
+
 void InitDataContainer(GuiDataContainer* imGuiData)
 {
     guiData = imGuiData;
@@ -123,6 +128,12 @@ void pathtraceInit(Scene* scene)
 
     cudaMalloc(&dev_image, pixelcount * sizeof(glm::vec3));
     cudaMemset(dev_image, 0, pixelcount * sizeof(glm::vec3));
+
+    cudaMalloc(&dev_avgImg, pixelcount * sizeof(glm::vec3));
+    cudaMemset(dev_avgImg, 0, pixelcount * sizeof(glm::vec3));
+
+    cudaMalloc(&dev_denoised, pixelcount * sizeof(glm::vec3));
+    cudaMemset(dev_denoised, 0, pixelcount * sizeof(glm::vec3));
 
     cudaMalloc(&dev_paths, pixelcount * sizeof(PathSegment));
 
@@ -216,6 +227,9 @@ void pathtraceInit(Scene* scene)
         cudaMalloc(&dev_textures, host_textures.size() * sizeof(cudaTextureObject_t));
         cudaMemcpy(dev_textures, host_textures.data(), host_textures.size() * sizeof(cudaTextureObject_t), cudaMemcpyHostToDevice);
     }
+
+    // initialize denoiser
+    initDenoiser(cam.resolution.x, cam.resolution.y, dev_image, dev_denoised);
     
     checkCUDAError("pathtraceInit");
 }
@@ -255,6 +269,10 @@ void pathtraceFree()
     host_texData.clear();
 
     cudaFree(dev_textures);
+
+    cudaFree(dev_avgImg);
+    cudaFree(dev_denoised);
+    denoiserFree();
 
     checkCUDAError("pathtraceFree");
 }
@@ -343,6 +361,7 @@ __global__ void computeIntersections(
 
         glm::vec3 tmp_intersect;
         glm::vec3 tmp_normal;
+        bool tmp_outside;
 
         // naive parse through global geoms
 
@@ -352,11 +371,11 @@ __global__ void computeIntersections(
 
             if (geom.type == CUBE)
             {
-                t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+                t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside);
             }
             else if (geom.type == SPHERE)
             {
-                t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+                t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside);
             }
 
             // Compute the minimum t from the intersection tests to determine what
@@ -367,6 +386,7 @@ __global__ void computeIntersections(
                 hit_geom_index = i;
                 intersect_point = tmp_intersect;
                 normal = tmp_normal;
+                outside = tmp_outside;
             }
         }
 
@@ -641,9 +661,21 @@ void pathtrace(uchar4* pbo, int frame, int iter)
 
     ///////////////////////////////////////////////////////////////////////////
 
-    // Send results to OpenGL buffer for rendering
-    sendImageToPBO<<<blocksPerGrid2d, blockSize2d>>>(pbo, cam.resolution, iter, dev_image);
+    // denoise accumulated dev_image
 
+    if (USE_DENOISER && (iter % 10 == 0)) {
+        denoise();
+        sendImageToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, iter, dev_denoised);
+    }
+    else if (USE_DENOISER) {
+        int iterAfterDenoise = iter % 10;
+        int denoisedIter = iter - iterAfterDenoise;
+        sendImageToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, denoisedIter, dev_denoised);
+    }
+    else {
+        sendImageToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, iter, dev_image);
+    }
+   
     checkCUDAError("pathtrace");
 }
 

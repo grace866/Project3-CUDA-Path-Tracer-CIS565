@@ -49,6 +49,10 @@ set(GLM_ROOT_DIR "${CMAKE_SOURCE_DIR}/external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
+set(OIDN_ROOT "${CMAKE_SOURCE_DIR}/oidn-2.5.1.x64.windows")
+list(APPEND CMAKE_PREFIX_PATH "${OIDN_ROOT}")
+find_package(OpenImageDenoise REQUIRED)
+
 set(headers
     src/image.h
     src/interactions.h
@@ -63,6 +67,7 @@ set(headers
     src/bvh.h
     src/tinyexr.h
     src/miniz.h
+    src/denoiser.h
 )
 
 set(sources
@@ -79,6 +84,7 @@ set(sources
     src/bvh.cpp
     src/bvh.cu
     src/miniz.c
+    src/denoiser.cpp
 )
 
 set(imgui_headers
@@ -128,6 +134,19 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     #stream_compaction  # TODO: uncomment if using your stream compaction
     CUDA::cudart
 )
+
+if (OpenImageDenoise_FOUND) 
+    message(STATUS "OIDN found ${OpenImageDenoise_DIR}")
+    target_link_libraries(${CMAKE_PROJECT_NAME} OpenImageDenoise)
+
+    add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${OIDN_ROOT}/bin"
+            "$<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>")
+else()
+    message(WARNING "OIDN not found")
+endif()
+
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES native)
 
