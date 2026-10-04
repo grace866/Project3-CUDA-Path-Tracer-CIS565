@@ -4,7 +4,7 @@
 #include "scene.h"
 #include "stb_image.h"
 
-#include "stb_image_write.h"   // single header, same author as stb_image
+#include "stb_image_write.h"  
 
 struct DecodedImage {
     int w = 0;
@@ -25,8 +25,6 @@ static bool decodeImg(const tg3_model& model, int imgIdx, const std::string& bas
         // storing texture files externally 
         std::ifstream f(baseDir + "/" + uri, std::ios::binary);
         if (!f) return false; // return if file couldn't open
-
-
         imgLoad.assign(std::istreambuf_iterator<char>(f), {});
     }
 
@@ -77,7 +75,6 @@ void Scene::loadFromJSON(const std::string& jsonName)
         const auto& name = item.key();
         const auto& p = item.value();
         Material newMaterial{};
-        // TODO: handle materials loading differently
         if (p["TYPE"] == "Diffuse")
         {
             const auto& col = p["ALBEDO"];
@@ -433,7 +430,6 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                                     printf("pixels=%zu expected=%zu first texel=%d %d %d %d\n",
                                         texRaw.pixels.size(), (size_t)texRaw.w * texRaw.h * 4,
                                         texRaw.pixels[0], texRaw.pixels[1], texRaw.pixels[2], texRaw.pixels[3]);
-                                    //stbi_write_png("debug_tex.png", texRaw.w, texRaw.h, 4, texRaw.pixels.data(), texRaw.w * 4);
                                     textures.push_back(std::move(texRaw.pixels));
                                     texDims.push_back(glm::vec2(texRaw.w, texRaw.h));
                                     printf("loaded tex %d: %dx%d\n", m.texIdx, texRaw.w, texRaw.h);
@@ -443,6 +439,9 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                                 }
                             }
                         }
+                    }
+                    else {
+                        m.color = glm::vec3(pbr.base_color_factor[0], pbr.base_color_factor[1], pbr.base_color_factor[2]);
                     }
                 }
 

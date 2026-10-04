@@ -39,9 +39,9 @@
 			"name":"Bed",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
-					0.799102783203125,
-					0.7379104495048523,
-					0.6375969648361206,
+					1,
+					1,
+					1,
 					1
 				],
 				"metallicFactor":0,

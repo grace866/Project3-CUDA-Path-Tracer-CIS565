@@ -160,26 +160,26 @@
 	"materials":[
 		{
 			"doubleSided":true,
-			"name":"gold",
+			"name":"Gold",
 			"pbrMetallicRoughness":{
-				"metallicFactor":0,
-				"roughnessFactor":0.5527864098548889
+				"baseColorFactor":[
+					1.0,
+					0.77,
+					0.34,
+					1
+				],
+				"roughnessFactor":0.1
 			}
 		},
 		{
 			"doubleSided":true,
-			"name":"drawer_handle_texture1",
+			"name":"Desk",
 			"pbrMetallicRoughness":{
+				"baseColorTexture":{
+					"index":0
+				},
 				"metallicFactor":0,
-				"roughnessFactor":0.5527864098548889
-			}
-		},
-		{
-			"doubleSided":true,
-			"name":"desk_material",
-			"pbrMetallicRoughness":{
-				"metallicFactor":0,
-				"roughnessFactor":0.5527864098548889
+				"roughnessFactor":0.14619162678718567
 			}
 		}
 	],
@@ -354,7 +354,7 @@
 						"TEXCOORD_0":35
 					},
 					"indices":3,
-					"material":1
+					"material":0
 				}
 			]
 		},
@@ -394,7 +394,7 @@
 						"TEXCOORD_0":43
 					},
 					"indices":44,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -408,7 +408,7 @@
 						"TEXCOORD_0":47
 					},
 					"indices":44,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -422,7 +422,7 @@
 						"TEXCOORD_0":50
 					},
 					"indices":44,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -436,7 +436,7 @@
 						"TEXCOORD_0":53
 					},
 					"indices":54,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -450,7 +450,7 @@
 						"TEXCOORD_0":57
 					},
 					"indices":54,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -464,7 +464,7 @@
 						"TEXCOORD_0":60
 					},
 					"indices":61,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -478,7 +478,7 @@
 						"TEXCOORD_0":64
 					},
 					"indices":65,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -492,7 +492,7 @@
 						"TEXCOORD_0":68
 					},
 					"indices":69,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -506,7 +506,7 @@
 						"TEXCOORD_0":72
 					},
 					"indices":61,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -520,7 +520,7 @@
 						"TEXCOORD_0":75
 					},
 					"indices":76,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -534,7 +534,7 @@
 						"TEXCOORD_0":79
 					},
 					"indices":61,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -548,7 +548,7 @@
 						"TEXCOORD_0":82
 					},
 					"indices":61,
-					"material":2
+					"material":1
 				}
 			]
 		},
@@ -562,9 +562,22 @@
 						"TEXCOORD_0":85
 					},
 					"indices":86,
-					"material":2
+					"material":1
 				}
 			]
+		}
+	],
+	"textures":[
+		{
+			"sampler":0,
+			"source":0
+		}
+	],
+	"images":[
+		{
+			"mimeType":"image/jpeg",
+			"name":"white_maple_veneer_diff_4k",
+			"uri":"white_maple_veneer_diff_4k.jpg"
 		}
 	],
 	"accessors":[
@@ -1893,6 +1906,12 @@
 			"byteLength":432,
 			"byteOffset":503036,
 			"target":34963
+		}
+	],
+	"samplers":[
+		{
+			"magFilter":9729,
+			"minFilter":9987
 		}
 	],
 	"buffers":[

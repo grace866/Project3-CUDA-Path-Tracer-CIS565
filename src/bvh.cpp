@@ -64,64 +64,9 @@ void BVH::UpdateNodeBounds(Scene* scene, int nodeIdx) {
 	}
 }
 
-/*void BVH::Subdivide(Scene* scene, int nodeIdx, int depth) {
-
-	BVHNode& node = bvhNodePool[nodeIdx]; 
-	if (node.triCount <= 2 || depth >= 48) return;
-
-	// split plane axis and position 
-	glm::vec3 extent = node.aabbMax - node.aabbMin;
-	int axis = 0;
-	if (extent.y > extent.x) axis = 1;
-	if (extent.z > extent[axis]) axis = 2;
-	float splitPos = node.aabbMin[axis] + extent[axis] * 0.5f;
-
-	// split the group into 2 halves
-	int i = node.leftFirst;
-	int j = i + node.triCount - 1;
-	while (i <= j) {
-		if (scene->triangles[triIdx[i]].centroid[axis] < splitPos) {
-			i++;
-		}
-		else {
-			std::swap(triIdx[i], triIdx[j--]);
-		}
-	}
-
-	// creating child nodes for each half 
-
-	// abort split if one of the sides is empty 
-	// some situation where > 2 triangles but all centroids are clustered on one side; want to prevent leaf w/ 0 prims
-	int leftCount = i - node.leftFirst;
-	if (leftCount == 0 || leftCount == node.triCount) return;
-
-	// indices of left and right child
-	int leftChildIdx = nodesUsed++;
-	int rightChildIdx = nodesUsed++;
-	
-	// left child starts where node began
-	bvhNodePool[leftChildIdx].leftFirst = node.leftFirst;
-	bvhNodePool[leftChildIdx].triCount = leftCount;
-
-	// right child starts at partition
-	bvhNodePool[rightChildIdx].leftFirst = i;
-	bvhNodePool[rightChildIdx].triCount = node.triCount - leftCount;
-
-	// update (now node is an internal node; leftFirst refers to nodes in bvhNodePool isntead of beginning of primitives in triangles)
-	node.leftFirst = leftChildIdx;
-	node.triCount = 0;
-	UpdateNodeBounds(scene, leftChildIdx);
-	UpdateNodeBounds(scene, rightChildIdx);
-
-	// recurse 
-	Subdivide(scene, leftChildIdx, depth + 1);
-	Subdivide(scene, rightChildIdx, depth + 1);
-}*/
-
-
 void BVH::Subdivide(Scene* scene, int nodeIdx, int depth) {
 	BVHNode& node = bvhNodePool[nodeIdx];
-	if (node.triCount <= 2 || depth >= 48) return;   // cap the depth (stack overflow problem) 
+	if (node.triCount <= 2 || depth >= 48) return;  // cap the depth (stack overflow problem) 
 
 	// bounds of the centroids, not of the triangles
 	glm::vec3 cmin(FLT_MAX), cmax(-FLT_MAX);
@@ -141,25 +86,16 @@ void BVH::Subdivide(Scene* scene, int nodeIdx, int depth) {
 	int i = node.leftFirst;
 	int j = i + node.triCount - 1;
 	while (i < j) {
-		if (scene->triangles[triIdx[i]].centroid[axis] < splitPos) i++;
-		else std::swap(triIdx[i], triIdx[j--]);
+		if (scene->triangles[triIdx[i]].centroid[axis] < splitPos) {
+			i++;
+		}
+		else {
+			std::swap(triIdx[i], triIdx[j--]);
+		}
 	}
 	int leftCount = i - node.leftFirst;
 
-	// fallback: median split if the midpoint was lopsided
-	if (leftCount == 0 || leftCount == node.triCount ||
-		leftCount < node.triCount / 8 || leftCount > node.triCount * 7 / 8) {
-		int mid = node.leftFirst + node.triCount / 2;
-		std::nth_element(triIdx.begin() + node.leftFirst,
-			triIdx.begin() + mid,
-			triIdx.begin() + node.leftFirst + node.triCount,
-			[&](int a, int b) {
-				return scene->triangles[a].centroid[axis] <
-					scene->triangles[b].centroid[axis];
-			});
-		leftCount = node.triCount / 2;
-		i = mid;
-	}
+	if (leftCount == 0 || leftCount == node.triCount) return;
 
 	int leftChildIdx = nodesUsed++;
 	int rightChildIdx = nodesUsed++;
