@@ -1,51 +1,44 @@
 {
-    "Materials":
-    {
-        "light":
-        {
-            "TYPE":"Emitting",
-            "ALBEDO":[1, 0.953, 0.675],
-            "EMITTANCE":5.0
-        },
-        "diffuse_white":
-        {
-            "TYPE":"Diffuse",
-            "ALBEDO":[0.98, 0.98, 0.98]
-        },
-        "diffuse_red":
-        {
-            "TYPE":"Diffuse",
-            "ALBEDO":[0.85, 0.35, 0.35]
-        },
-        "diffuse_green":
-        {
-            "TYPE":"Diffuse",
-            "ALBEDO":[0.35, 0.85, 0.35]
-        },
-        "specular_white":
-        {
-            "TYPE":"Specular",
-            "ALBEDO":[0.98, 0.98, 0.98],
-            "ROUGHNESS":0.0
-        },
-        "glass":
-        {
-            "TYPE":"Dielectric",
-            "ALBEDO":[0.0, 0.0, 0.0],
-            "IOR": 1.5,
-            "ABSORPTION":[0.0, 0.0, 0.0]
-        },
-        "tinted_glass":
-        {
-          "TYPE":"Dielectric",
-          "ALBEDO":[0.0, 0.0, 0.0],
-          "IOR":1.5,
-          "ABSORPTION": [0.04, 0.30, 0.009]
-        }
+  "Materials": {
+    "light": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 1, 1, 1 ],
+      "EMITTANCE": 10.0
     },
+    "diffuse_white": {
+      "TYPE": "Diffuse",
+      "ALBEDO": [ 0.98, 0.98, 0.98 ]
+    },
+    "diffuse_red": {
+      "TYPE": "Diffuse",
+      "ALBEDO": [ 0.85, 0.35, 0.35 ]
+    },
+    "diffuse_green": {
+      "TYPE": "Diffuse",
+      "ALBEDO": [ 0.35, 0.85, 0.35 ]
+    },
+    "specular_white": {
+      "TYPE": "Specular",
+      "ALBEDO": [ 0.98, 0.98, 0.98 ],
+      "ROUGHNESS": 0.0
+    },
+    "glass": {
+      "TYPE": "Dielectric",
+      "ALBEDO": [ 0.0, 0.0, 0.0 ],
+      "IOR": 1.5,
+      "ABSORPTION": [ 0.0, 0.0, 0.0 ]
+    },
+
+    "gloss": {
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 0.99, 0.99, 0.99 ],
+      "ROUGHNESS": 0.1,
+      "METALLIC": 1.0
+    }
+  },
     "Environment Map": 
     {
-        "FILEPATH":  "none"
+        "FILEPATH": "none"
     },
     "Camera":
     {
@@ -103,18 +96,26 @@
     },
     {
       "TYPE": "sphere",
-      "MATERIAL": "tinted_glass",
-      "TRANS": [ -1.0, 4.0, -1.0 ],
+      "MATERIAL": "glass",
+      "TRANS": [ -1.5, 2.5, 3.0 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
       "SCALE": [ 3.0, 3.0, 3.0 ]
     },
     {
       "TYPE": "mesh",
-      "MATERIAL": "tinted_glass",
-      "FILEPATH": "models\\desk.gltf",
-      "TRANS": [ 2.0, 2.0, 0.0 ],
+      "MATERIAL": "none",
+      "FILEPATH": "models\\concrete_cat_statue_4k.gltf",
+      "TRANS": [ -0.5, 0.0, -1.0 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
-      "SCALE": [ 50.0, 50.0, 50.0 ]
+      "SCALE": [ 20.0, 20.0, 20.0 ]
+    },
+    {
+      "TYPE": "mesh",
+      "MATERIAL": "gloss",
+      "FILEPATH": "models\\concrete_cat_statue_4k.gltf",
+      "TRANS": [ 3.0, 0.0, 2.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 20.0, 20.0, 20.0 ]
     }
   ]
 }
