@@ -23,11 +23,6 @@
       "ROUGHNESS": 1.0,
       "METALLIC": 0.0
     },
-    "specular_white": {
-      "TYPE": "Specular",
-      "ALBEDO": [ 0.98, 0.98, 0.98 ],
-      "ROUGHNESS": 0.0
-    },
     "glass": {
       "TYPE": "Dielectric",
       "ALBEDO": [ 0.0, 0.0, 0.0 ],
@@ -106,11 +101,12 @@
       "SCALE": [ 0.01, 10.0, 10.0 ]
     },
     {
-      "TYPE": "sphere",
-      "MATERIAL": "tinted_glass",
-      "TRANS": [ 0.0, 4.5, 0.0 ],
+      "TYPE": "mesh",
+      "MATERIAL": "diffuse_white",
+      "FILEPATH": "models\\dragon.gltf",
+      "TRANS": [ 0.0, 2.0, -1.0 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
-      "SCALE": [ 3.0, 3.0, 3.0 ]
+      "SCALE": [ 2.0, 2.0, 2.0 ]
     }
   ]
 }
