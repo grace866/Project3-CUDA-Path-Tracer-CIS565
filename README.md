@@ -54,15 +54,15 @@ There is one shading function for opaque materials (metals, plastics) and one fo
   <tr>
     <td align="center">
       <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_16-48-47z.5000samp.png" width="333"><br>
-      <sub>Diffuse: Metallic: 0.0, Roughness: 1.0</sub>
+      <sub>Diffuse - Metallic: 0.0, Roughness: 1.0</sub>
     </td>
     <td align="center">
       <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_16-59-59z.5000samp.png" width="333"><br>
-      <sub>Semi-Gloss: Metallic: 1.0, Roughness: 0.5</sub>
+      <sub>Semi-Gloss - Metallic: 1.0, Roughness: 0.5</sub>
     </td>
     <td align="center">
       <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_16-50-53z.5000samp.png" width="333"><br>
-      <sub>Glossy: Metallic: 1.0, Roughness: 0.0</sub>
+      <sub>Glossy - Metallic: 1.0, Roughness: 0.0</sub>
     </td>
   </tr>
 </table>
@@ -114,6 +114,10 @@ To support arbitrary meshes, the tracer has triangle intersection and a BVH.
 
 **Triangle intersection** uses the [Möller-Trumbore algorithm](https://scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection.html). Equating the ray `o + t·d` with the barycentric form of a point on a triangle lets us solve for `t`, `u`, and `v`: the distance along the ray and the barycentric coordinates of the hit. `u` and `v` are later used to interpolate UVs for texture sampling.
 
+<p align="center">
+  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/bvh_diagram.png" width="400"><br>
+</p>
+
 **Bounding Volume Hierarchy (BVH)** is a tree that recursively partitions the scene into increasingly smaller axis-aligned bounding boxes. Since scenes can contain hundreds of thousands of triangles, testing every primitive for every ray would be far too slow; thus, we use a spatial acceleration structure to speed up intersection testing. Following [Jacco Biker's blog](https://jacco.ompf2.com/2022/04/13/how-to-build-a-bvh-part-1-basics/), I implemented a simple BVH that significantly improved performance for more complex scenes (see [Performance Analysis](#performance-analysis)).
 
 ### Mesh and Texture/Material Loading
@@ -132,11 +136,41 @@ Environment maps in `.exr` format are loaded with [tinyexr](https://github.com/s
 
 ### Depth of Field
 
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/dof.2026-10-05_18-11-25z.5000samp.png" width="333"><br>
+      <sub>Focal Length: 8, Aperture Radius: 0.2</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/dof.2026-10-05_18-09-22z.5000samp.png" width="333"><br>
+      <sub>Focal Length: 8, Aperture Radius: 0.3</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/dof.2026-10-05_18-13-21z.5000samp.png" width="333"><br>
+      <sub>Focal Length: 8, Aperture Radius: 0.5</sub>
+    </td>
+  </tr>
+</table>
+
 A physically based lens camera produces [depth of field](https://blog.demofox.org/2018/07/04/pathtraced-depth-of-field-bokeh/). The focal plane sits at a fixed distance from the camera, and a random point is uniformly sampled on a circular aperture of a given radius. That point determines the ray origin and direction.
 
 This is an improvement over firing a ray straight from the camera through each pixel, which models a pinhole camera that can only produce perfectly sharp images.
 
 ### Intel Open Image Denoise
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_18-22-26z.50samp.png" width="500"><br>
+      <sub>50 iterations, not denoised</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_18-25-17z.50samp.png" width="500"><br>
+      <sub>50 iterations, denoised</sub>
+    </td>
+  </tr>
+</table>
 
 An AI-based denoiser from [Intel Open Image Denoise](https://www.openimagedenoise.org/) greatly reduces the number of iterations needed for the image to converge to a clean result.
 
