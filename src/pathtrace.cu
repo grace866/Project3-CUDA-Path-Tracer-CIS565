@@ -27,8 +27,8 @@
 #define MATERIAL_SORTING 0
 #define USE_BVH 1
 #define USE_DENOISER 0
-#define FOCAL_DISTANCE 20
-#define APERTURE_RADIUS 0.15
+#define FOCAL_DISTANCE 5
+#define APERTURE_RADIUS 0.02
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)

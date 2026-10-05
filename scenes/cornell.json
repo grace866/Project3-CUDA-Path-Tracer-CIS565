@@ -95,27 +95,12 @@
       "SCALE": [ 0.01, 10.0, 10.0 ]
     },
     {
-      "TYPE": "sphere",
-      "MATERIAL": "glass",
-      "TRANS": [ -1.5, 2.5, 3.0 ],
-      "ROTAT": [ 0.0, 0.0, 0.0 ],
-      "SCALE": [ 3.0, 3.0, 3.0 ]
-    },
-    {
       "TYPE": "mesh",
-      "MATERIAL": "none",
-      "FILEPATH": "models\\concrete_cat_statue_4k.gltf",
-      "TRANS": [ -0.5, 0.0, -1.0 ],
+      "MATERIAL": "diffuse_white",
+      "FILEPATH": "models\\dragon.gltf",
+      "TRANS": [ 0.0, 4.5, 6.5 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
-      "SCALE": [ 20.0, 20.0, 20.0 ]
-    },
-    {
-      "TYPE": "mesh",
-      "MATERIAL": "gloss",
-      "FILEPATH": "models\\concrete_cat_statue_4k.gltf",
-      "TRANS": [ 3.0, 0.0, 2.0 ],
-      "ROTAT": [ 0.0, 0.0, 0.0 ],
-      "SCALE": [ 20.0, 20.0, 20.0 ]
+      "SCALE": [ 1.0, 1.0, 1.0 ]
     }
   ]
 }
