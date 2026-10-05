@@ -3,11 +3,93 @@ CUDA Path Tracer
 
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 3**
 
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
+* Grace Tan
+* Tested on: Windows 11 Home 25H2 (Build 26200), AMD Ryzen 9 8945HX @ 2.50GHz, 16GB RAM, NVIDIA GeForce RTX 5060 Laptop GPU 8GB
 
-### (TODO: Your README)
+# CUDA Monte Carlo Path Tracer
 
-*DO NOT* leave the README to the last minute! It is a crucial part of the
-project, and we will not be able to grade you without a good README.
+Monte Carlo Pathtracing is a rendering technique that produces photorealistic images by simulating real-life light transport modeled by the rendering equation. Rays fired from the camera accumulate color and intensity based on interactions with different materials in the scene, ultimately producing an average of their contributions for each pixel. 
+
+Unlike simple rasterization, a different rendering technique that picks the color of geometry closest to the camera at each pixel, pathtracing allows us to render scenes with increased physical accuracy and complexity. 
+
+## Table of Contents
+
+- [Features](#features)
+  - [Anti-Aliasing](#anti-aliasing)
+  - [Physically Based Materials](#physically-based-materials)
+  - [Triangle Intersection and BVH](#triangle-intersection-and-bounding-volume-hierarchy)
+  - [Mesh and Texture/Material Loading](#mesh-and-texturematerial-loading)
+  - [Environment Mapping](#environment-mapping)
+  - [Depth of Field](#depth-of-field)
+  - [Intel Open Image Denoise](#intel-open-image-denoise)
+- [Performance Analysis](#performance-analysis)
+- [References](#references)
+
+## Features
+
+### Anti-Aliasing
+
+Aliasing is the jagged, staircase effect that appears when smooth borders are rendered on a pixel display. Anti-aliasing addresses it by sampling a pixel's neighborhood and averaging the colors, which softens edges.
+
+Because a path tracer already fires multiple rays through each pixel, anti-aliasing comes essentially for free: each ray is simply jittered within the pixel.
+
+### Physically Based Materials
+
+There is one shading function for opaque materials (metals, plastics) and one for transmissive materials (glass).
+
+#### Opaque Materials: Cook-Torrance BRDF
+
+Diffuse and specular reflection are modeled with a Cook-Torrance BRDF.
+
+The specular lobe is based on the microfacet theory, which assumes that a surface is composed of many small, flat facets that determine the appearance of a material. To model the distribution of microfacet normals, I used the GGX distribution function. The fresnel term models increased reflectivity at grazing angles and the smith geometry term corrects for camera-aligned facets that are masked and/or shadowed by neighboring geometry. 
+
+[Joe Schutte’s probability distribution simplified version](https://schuttejoe.github.io/post/ggximportancesamplingpart1/) was incredibly helpful for implementing the specular lobe. The diffuse lobe was implemented simply using uniform cosine-weighted hemisphere sampling.
+
+I used this shading model
+$$
+f(\omega_o, \omega_i) = k_d \frac{R}{\pi} + k_s \frac{D\,G}{4(\omega_o \cdot n)(\omega_i \cdot n)}
+$$
+, published by Epic as a practical PBR model for real-time rendering, for the full metallic-roughness BRDF. `k_s` is simply the fresnel term and `k_d = 1 - k_s`.
+
+I stochastically sampled the diffuse and specular lobes by comparing a uniformly sampled probability `p` and the luminance of the multi-channel fresnel term. To compute this, I interpolated between the metallic fresnel term, which takes the material’s albedo as the base reflectance, and `0.04`, the base reflectance for non-metallic materials.
+
+#### Transmissive Materials
+
+For transmissive materials, I referenced [Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html#dielectrics/refraction) to learn about Snell’s law, which describes the direction of refracted rays. Refraction is mixed with perfect reflection based on the fresnel term, which is again approximated with Schlick but instead given a base reflectance based on the material’s IOR. Additionally, when a ray travels from a higher IOR to a lower IOR at a large angle, it experiences total internal reflection and cannot be refracted due to an imbalance in Snell’s law. In this case, the ray is also reflected. 
+
+Finally, I used Beer’s law of absorption, which says that light intensity decays exponentially with increasing distance traveled through an absorbing medium, to calculate material attenuation. When absorption differs per channel, the ray becomes tinted and gives the transmissive material color. 
+
+### Triangle Intersection and Bounding Volume Hierarchy
+
+To support arbitrary meshes, the tracer has triangle intersection and a BVH.
+
+**Triangle intersection** uses the [Möller-Trumbore algorithm](https://scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection.html). Equating the ray `o + t·d` with the barycentric form of a point on a triangle lets us solve for `t`, `u`, and `v`: the distance along the ray and the barycentric coordinates of the hit. `u` and `v` are later used to interpolate UVs for texture sampling.
+
+**Bounding Volume Hierarchy (BVH)** is a tree that recursively partitions the scene into increasingly smaller axis-aligned bounding boxes. Since scenes can contain hundreds of thousands of triangles, testing every primitive for every ray would be far too slow; thus, we use a spatial acceleration structure to speed up intersection testing. Following [Jacco Biker's blog](https://jacco.ompf2.com/2022/04/13/how-to-build-a-bvh-part-1-basics/), I implemented a simple BVH that significantly improved performance for more complex scenes (see [Performance Analysis](#performance-analysis)).
+
+### Mesh and Texture/Material Loading
+
+Meshes are loaded from `.gltf` / `.glb` files using [tinygltf](https://github.com/syoyo/tinygltf). The scene graph is traversed to extract triangle data: positions, normals, and UVs. Understanding the structure of a gltf file was crucial in implementing loading - this [reference](https://www.khronos.org/files/gltf20-reference-guide.pdf) was extremely helpful for me.
+
+Material data such as image textures and roughness is also optionally extracted and stored. Alternatively, a material can be specified directly in the scene's JSON file.
+
+### Environment Mapping
+
+Environment maps in `.exr` format are loaded with [tinyexr](https://github.com/syoyo/tinyexr). When one is present, rays that miss all geometry sample the map as an infinite light source instead of contributing black.
+
+### Depth of Field
+
+A physically based lens camera produces [depth of field](https://blog.demofox.org/2018/07/04/pathtraced-depth-of-field-bokeh/). The focal plane sits at a fixed distance from the camera, and a random point is uniformly sampled on a circular aperture of a given radius. That point determines the ray origin and direction.
+
+This is an improvement over firing a ray straight from the camera through each pixel, which models a pinhole camera that can only produce perfectly sharp images.
+
+### Intel Open Image Denoise
+
+An AI-based denoiser from [Intel Open Image Denoise](https://www.openimagedenoise.org/) greatly reduces the number of iterations needed for the image to converge to a clean result.
+
+The denoised version of the current accumulation is output every 10 frames, so results can be viewed continuously without a significant performance cost.
+
+## Performance Analysis
+
+## 3rd Party Resources 
 
