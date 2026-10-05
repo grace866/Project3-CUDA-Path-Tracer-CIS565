@@ -249,10 +249,13 @@ __host__ __device__ void scatterRayOpaque(
     glm::vec3 wo = glm::inverse(toWorld) * (-pathSegment.ray.direction);
     
     float cosTheta = glm::dot(normal, - pathSegment.ray.direction);
+
+    // doesn't work - washes out colors (tint = gone bruh)
+    //glm::vec3 r0 = glm::mix(glm::vec3(0.4f), albedo, m.metallic);
+    //glm::vec3 fresnel = metallicFresnel(r0, cosTheta);
+
     glm::vec3 metallicF = metallicFresnel(albedo, cosTheta);
-    glm::vec3 diffuseF = diffuseFresnel(albedo, m.roughness, cosTheta);
     // interpolate F based on m.metallic
-    // bruh smth wrong with diffuseF
     glm::vec3 fresnel = (1.0f - m.metallic) * 0.04f + (m.metallic) * metallicF;
     // calculate luminance (in one value, how much light is reflected)
     float F = glm::dot(fresnel, glm::vec3(0.2126f, 0.7152f, 0.0722f)); // = ks for cook-torrence
@@ -297,7 +300,7 @@ __host__ __device__ void scatterRayTransparent(
     float cosTheta = fminf(glm::dot(-pathSegment.ray.direction, normal), 1.0);
 
     // equation is broken - cannot refract 
-    // total internal reflection (dense -> less dense & angle of incidence exceeds 
+    // total internal reflection
     float sinTheta = sqrtf(1.0f - cosTheta * cosTheta);
     bool cannotRefract = ri * sinTheta > 1.0;
 
@@ -308,7 +311,6 @@ __host__ __device__ void scatterRayTransparent(
 
     // split reflection & refraction 
     glm::vec3 dir;
-    //cannotRefract || reflectance > u01(rng)
     if (cannotRefract || reflectance > u01(rng)) {
         dir = calculateReflectedRayDirection(pathSegment.ray.direction, normal);
     }

@@ -8,9 +8,6 @@
 #include <cmath>
 #include "utilities.h"
 
-#define CULLING 0
-
-
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
  */

@@ -482,7 +482,14 @@ __global__ void shadeFakeMaterial(
             glm::vec3 materialColor = material.color;
 
             if (material.emittance > 0.0f) {
-                pathSegments[idx].color *= (materialColor * material.emittance);
+                // sample texture 
+                glm::vec3 texAlbedo = materialColor;
+                if (material.texIdx != -1) {
+                    float4 texel = tex2D<float4>(textures[material.texIdx], intersection.uv[0], intersection.uv[1]);
+                    texAlbedo = glm::vec3(texel.x, texel.y, texel.z);
+                }
+   
+                pathSegments[idx].color *= (texAlbedo * material.emittance);
                 pathSegments[idx].remainingBounces = 0;
             }
             else {

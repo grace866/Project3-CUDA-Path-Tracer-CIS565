@@ -182,27 +182,11 @@
     },
     {
       "TYPE": "mesh",
-      "MATERIAL": "blue_light",
-      "FILEPATH": "models\\cat_neon.gltf",
-      "TRANS": [ 10.0, 2.5, 2.5 ],
-      "ROTAT": [ 0.0, 90.0, 0.0 ],
-      "SCALE": [ 0.8, 0.8, 0.8 ]
-    },
-    {
-      "TYPE": "mesh",
       "MATERIAL": "purple_light",
       "FILEPATH": "models\\sign_neon2.gltf",
       "TRANS": [ -10.0, 9.0, 3.5 ],
       "ROTAT": [ 90.0, 0.0, -90.0 ],
       "SCALE": [ 0.8, 0.8, 0.8 ]
-    },
-    {
-      "TYPE": "mesh",
-      "MATERIAL": "none",
-      "FILEPATH": "models\\shelves.gltf",
-      "TRANS": [ 11.0, 4.0, 6.5 ],
-      "ROTAT": [ 0.0, 90.0, 0.0 ],
-      "SCALE": [ 2.5, 2.5, 2.5 ]
     },
     {
       "TYPE": "mesh",

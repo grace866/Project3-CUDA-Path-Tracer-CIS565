@@ -140,12 +140,6 @@ __host__ __device__ float triangleIntersectionTest(
     glm::vec3 pVec = glm::cross(dir, e1);
     float det = glm::dot(pVec, e0);
 
-#if CULLING
-    // if determinant is negative, triangle is back-facing
-    // if determinant is close to 0, ray misses the triangle (parallel)
-    if (det < EPSILON) return -1;
-#endif
-
     if (abs(det) < EPSILON) return false;
 
     float invDet = 1 / det;

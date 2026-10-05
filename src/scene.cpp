@@ -350,23 +350,35 @@ void Scene::gltfLoad(const json& modelData, std::unordered_map<std::string, uint
                     const tg3_extras_ext& ext = mat.ext;
                     uint32_t numExt = ext.extensions_count;
 
+                    // check emission
+                    glm::vec3 emissiveFactor = glm::vec3(mat.emissive_factor[0], mat.emissive_factor[1], mat.emissive_factor[2]);
+
                     bool isTransmissive = false;
                     if (numExt > 0) {
                         const tg3_extension* allExt = ext.extensions;
 
-                        // looking for 
-                        const char* key = "KHR_materials_transmission";
-                        size_t keyLen = strlen(key);
+                        const char* keyTrans = "KHR_materials_transmission";
+                        size_t keyLenTrans = strlen(keyTrans);
+
+                        const char* keyEms = "KHR_materials_emissive_strength";
+                        size_t keyLenEms = strlen(keyEms);
 
                         for (int n = 0; n < numExt; ++n) {
                             const tg3_extension& e = allExt[n];
-                            if (e.name.len == keyLen && memcmp(e.name.data, key, keyLen) == 0) {
+
+                            if (e.name.len == keyLenTrans && memcmp(e.name.data, keyTrans, keyLenTrans) == 0) {
                                 m.type = DIELECTRIC;
                                 m.color = glm::vec3(0.0f);
                                 m.refractionIndex = 1.5f;
                                 m.absorption = glm::vec3(0.0f);
                                 isTransmissive = true;
-                                break;
+                            }
+                            else if (e.name.len == keyLenEms && memcmp(e.name.data, keyEms, keyLenEms) == 0) {
+                                if (e.value.object_count > 0) {
+                                    const tg3_value& v = e.value.object_data[0].value;
+                                    m.emittance = v.real_val;
+                                }
+                                m.color = emissiveFactor;
                             }
                         }
                     }
