@@ -12,6 +12,17 @@ Monte Carlo Pathtracing is a rendering technique that produces photorealistic im
 
 Unlike simple rasterization, a different rendering technique that picks the color of geometry closest to the camera at each pixel, pathtracing allows us to render scenes with increased physical accuracy and complexity. 
 
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_15-45-41z.5000samp.png" width="500"><br>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-04_11-55-43z.5000samp.png" width="500"><br>
+    </td>
+  </tr>
+</table>
+
 ## Table of Contents
 
 - [Features](#features)
@@ -23,7 +34,7 @@ Unlike simple rasterization, a different rendering technique that picks the colo
   - [Depth of Field](#depth-of-field)
   - [Intel Open Image Denoise](#intel-open-image-denoise)
 - [Performance Analysis](#performance-analysis)
-- [References](#references)
+- [3rd Party Resources](#3rd-party-resources)
 
 ## Features
 
@@ -38,6 +49,23 @@ Because a path tracer already fires multiple rays through each pixel, anti-alias
 There is one shading function for opaque materials (metals, plastics) and one for transmissive materials (glass).
 
 #### Opaque Materials: Cook-Torrance BRDF
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_16-48-47z.5000samp.png" width="333"><br>
+      <sub>Diffuse: Metallic: 0.0, Roughness: 1.0</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_16-59-59z.5000samp.png" width="333"><br>
+      <sub>Semi-Gloss: Metallic: 1.0, Roughness: 0.5</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_16-50-53z.5000samp.png" width="333"><br>
+      <sub>Glossy: Metallic: 1.0, Roughness: 0.0</sub>
+    </td>
+  </tr>
+</table>
 
 Diffuse and specular reflection are modeled with a Cook-Torrance BRDF.
 
@@ -54,6 +82,27 @@ $$
 I stochastically sampled the diffuse and specular lobes by comparing a uniformly sampled probability `p` and the luminance of the multi-channel fresnel term. To compute this, I interpolated between the metallic fresnel term, which takes the material’s albedo as the base reflectance, and `0.04`, the base reflectance for non-metallic materials.
 
 #### Transmissive Materials
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/transmissive_pbr.2026-10-05_17-12-15z.5000samp.png" width="250"><br>
+      <sub>Glass in Environment Map</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/cornell.2026-10-05_17-19-18z.5000samp.png" width="250"><br>
+      <sub>Glass in Cornell Box</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/transmissive_pbr.2026-10-05_17-13-11z.5000samp.png" width="250"><br>
+      <sub>Tinted Glass in Environment Map</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/cornell.2026-10-05_17-22-54z.5000samp.png" width="250"><br>
+      <sub>Tinted Glass in Cornell Box</sub>
+    </td>
+  </tr>
+</table>
 
 For transmissive materials, I referenced [Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html#dielectrics/refraction) to learn about Snell’s law, which describes the direction of refracted rays. Refraction is mixed with perfect reflection based on the fresnel term, which is again approximated with Schlick but instead given a base reflectance based on the material’s IOR. Additionally, when a ray travels from a higher IOR to a lower IOR at a large angle, it experiences total internal reflection and cannot be refracted due to an imbalance in Snell’s law. In this case, the ray is also reflected. 
 
@@ -74,6 +123,10 @@ Meshes are loaded from `.gltf` / `.glb` files using [tinygltf](https://github.co
 Material data such as image textures and roughness is also optionally extracted and stored. Alternatively, a material can be specified directly in the scene's JSON file.
 
 ### Environment Mapping
+
+<p align="center">
+  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-09-30_06-16-36z.5000samp.png" width="400"><br>
+</p>
 
 Environment maps in `.exr` format are loaded with [tinyexr](https://github.com/syoyo/tinyexr). When one is present, rays that miss all geometry sample the map as an infinite light source instead of contributing black.
 
