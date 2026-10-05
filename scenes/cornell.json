@@ -6,16 +6,22 @@
       "EMITTANCE": 10.0
     },
     "diffuse_white": {
-      "TYPE": "Diffuse",
-      "ALBEDO": [ 0.98, 0.98, 0.98 ]
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 0.98, 0.98, 0.98 ],
+      "ROUGHNESS": 1.0,
+      "METALLIC": 0.0
     },
-    "diffuse_red": {
-      "TYPE": "Diffuse",
-      "ALBEDO": [ 0.85, 0.35, 0.35 ]
+    "diffuse_blue": {
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 0.506, 0.659, 0.949 ],
+      "ROUGHNESS": 1.0,
+      "METALLIC": 0.0
     },
-    "diffuse_green": {
-      "TYPE": "Diffuse",
-      "ALBEDO": [ 0.35, 0.85, 0.35 ]
+    "diffuse_pink": {
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 1, 0.533, 1 ],
+      "ROUGHNESS": 1.0,
+      "METALLIC": 0.0
     },
     "specular_white": {
       "TYPE": "Specular",
@@ -28,7 +34,12 @@
       "IOR": 1.5,
       "ABSORPTION": [ 0.0, 0.0, 0.0 ]
     },
-
+    "tinted_glass": {
+      "TYPE": "Dielectric",
+      "ALBEDO": [ 0.0, 0.0, 0.0 ],
+      "IOR": 1.5,
+      "ABSORPTION": [ 0.04, 0.30, 0.009 ]
+    },
     "gloss": {
       "TYPE": "MetallicWorkflow",
       "ALBEDO": [ 0.99, 0.99, 0.99 ],
@@ -82,25 +93,24 @@
     },
     {
       "TYPE": "cube",
-      "MATERIAL": "diffuse_red",
+      "MATERIAL": "diffuse_pink",
       "TRANS": [ -5.0, 5.0, 0.0 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
       "SCALE": [ 0.01, 10.0, 10.0 ]
     },
     {
       "TYPE": "cube",
-      "MATERIAL": "diffuse_green",
+      "MATERIAL": "diffuse_blue",
       "TRANS": [ 5.0, 5.0, 0.0 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
       "SCALE": [ 0.01, 10.0, 10.0 ]
     },
     {
-      "TYPE": "mesh",
-      "MATERIAL": "diffuse_white",
-      "FILEPATH": "models\\dragon.gltf",
-      "TRANS": [ 0.0, 4.5, 6.5 ],
+      "TYPE": "sphere",
+      "MATERIAL": "tinted_glass",
+      "TRANS": [ 0.0, 4.5, 0.0 ],
       "ROTAT": [ 0.0, 0.0, 0.0 ],
-      "SCALE": [ 1.0, 1.0, 1.0 ]
+      "SCALE": [ 3.0, 3.0, 3.0 ]
     }
   ]
 }

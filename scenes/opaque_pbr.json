@@ -1,48 +1,10 @@
 {
   "Materials": {
-    "light": {
-      "TYPE": "Emitting",
-      "ALBEDO": [ 1, 0.196, 0.984 ],
-      "EMITTANCE": 5.0
-    },
-    "fuchsia_light": {
-      "TYPE": "Emitting",
-      "ALBEDO": [ 0.945, 0.294, 1 ],
-      "EMITTANCE": 2.0
-    },
-    "purple_light": {
-      "TYPE": "Emitting",
-      "ALBEDO": [ 0.424, 0.31, 1 ],
-      "EMITTANCE": 2.0
-    },
-    "blue_light": {
-      "TYPE": "Emitting",
-      "ALBEDO": [ 0.576, 0.969, 1 ],
-      "EMITTANCE": 2.0
-    },
-    "diffuse_white": {
-      "TYPE": "MetallicWorkflow",
-      "ALBEDO": [ 1.0, 1.0, 1.0 ],
-      "ROUGHNESS": 0.5,
-      "METALLIC": 0.0
-    },
     "diffuse_blue": {
       "TYPE": "MetallicWorkflow",
       "ALBEDO": [ 0.506, 0.659, 0.949 ],
       "ROUGHNESS": 1.0,
       "METALLIC": 0.0
-    },
-    "glass": {
-      "TYPE": "Dielectric",
-      "ALBEDO": [ 0.0, 0.0, 0.0 ],
-      "IOR": 1.5,
-      "ABSORPTION": [ 0.0, 0.0, 0.0 ]
-    },
-    "tinted_glass": {
-      "TYPE": "Dielectric",
-      "ALBEDO": [ 0.0, 0.0, 0.0 ],
-      "IOR": 1.5,
-      "ABSORPTION": [ 0.04, 0.30, 0.009 ]
     },
     "semi-gloss": {
       "TYPE": "MetallicWorkflow",
@@ -71,7 +33,7 @@
     "FOVY": 45.0,
     "ITERATIONS": 5000,
     "DEPTH": 8,
-    "FILE": "envmap",
+    "FILE": "opaque_pbr",
     "EYE": [ 0.0, 5.0, 10.5 ],
     "LOOKAT": [ 0.0, 5.0, 0.0 ],
     "UP": [ 0.0, 1.0, 0.0 ]

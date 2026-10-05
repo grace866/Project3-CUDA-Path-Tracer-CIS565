@@ -1,0 +1,38 @@
+{
+  "Materials": {
+    "glass": {
+      "TYPE": "Dielectric",
+      "ALBEDO": [ 0.0, 0.0, 0.0 ],
+      "IOR": 1.5,
+      "ABSORPTION": [ 0.0, 0.0, 0.0 ]
+    },
+    "tinted_glass": {
+      "TYPE": "Dielectric",
+      "ALBEDO": [ 0.0, 0.0, 0.0 ],
+      "IOR": 1.5,
+      "ABSORPTION": [ 0.04, 0.30, 0.009 ]
+    }
+  },
+  "Environment Map": {
+    "FILEPATH": "environment\\qwantani_dusk_2_puresky_4k.exr"
+  },
+  "Camera": {
+    "RES": [ 800, 800 ],
+    "FOVY": 45.0,
+    "ITERATIONS": 5000,
+    "DEPTH": 8,
+    "FILE": "transmissive_pbr",
+    "EYE": [ 0.0, 5.0, 10.5 ],
+    "LOOKAT": [ 0.0, 5.0, 0.0 ],
+    "UP": [ 0.0, 1.0, 0.0 ]
+  },
+  "Objects": [
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "tinted_glass",
+      "TRANS": [ 0.0, 4.5, 3.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    }
+  ]
+}
