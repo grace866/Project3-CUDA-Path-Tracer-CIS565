@@ -1,0 +1,147 @@
+{
+  "Materials": {
+    "fuchsia_light": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 0.945, 0.294, 1 ],
+      "EMITTANCE": 2.0
+    },
+    "purple_light": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 0.424, 0.31, 1 ],
+      "EMITTANCE": 2.0
+    },
+    "blue_light": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 0.576, 0.969, 1 ],
+      "EMITTANCE": 2.0
+    },
+    "darkblue_light": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 0.435, 0.545, 1 ],
+      "EMITTANCE": 2.0
+    },
+    "mint_light": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 0.569, 1, 0.776 ],
+      "EMITTANCE": 2.0
+    },
+    "yellow_light": {
+      "TYPE": "Emitting",
+      "ALBEDO": [ 1, 0.976, 0.694 ],
+      "EMITTANCE": 2.0
+    },
+    "diffuse_blue": {
+      "TYPE": "MetallicWorkflow",
+      "ALBEDO": [ 0.506, 0.659, 0.949 ],
+      "ROUGHNESS": 1.0,
+      "METALLIC": 0.0
+    }
+  },
+  "Environment Map": {
+    "FILEPATH": "environment//qwantani_night_puresky_4k.exr"
+  },
+  "Camera": {
+    "RES": [ 800, 800 ],
+    "FOVY": 45.0,
+    "ITERATIONS": 5000,
+    "DEPTH": 8,
+    "FILE": "dof",
+    "EYE": [ 0.0, 5.0, 10.5 ],
+    "LOOKAT": [ 0.0, 5.0, 0.0 ],
+    "UP": [ 0.0, 1.0, 0.0 ]
+  },
+  "Objects": [
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "fuchsia_light",
+      "TRANS": [ 20.0, 11.0, -10.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "blue_light",
+      "TRANS": [ -25.0, 7.0, -20.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "purple_light",
+      "TRANS": [ -35.0, 13.0, -25.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "darkblue_light",
+      "TRANS": [ 12.0, 10.0, -15.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "yellow_light",
+      "TRANS": [ -3.0, 7.0, -30.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "mint_light",
+      "TRANS": [ -16.0, 20.0, -22.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "fuchsia_light",
+      "TRANS": [ -3.0, 12.0, -10.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "blue_light",
+      "TRANS": [ 0.0, 10.0, -20.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "purple_light",
+      "TRANS": [ 20.0, 15.0, -25.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "darkblue_light",
+      "TRANS": [ -8.0, 13.0, -15.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "yellow_light",
+      "TRANS": [ 23.0, 9.0, -30.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "sphere",
+      "MATERIAL": "mint_light",
+      "TRANS": [ 4.0, 8.0, -22.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 3.0, 3.0, 3.0 ]
+    },
+    {
+      "TYPE": "mesh",
+      "MATERIAL": "diffuse_blue",
+      "FILEPATH": "models\\dragon.gltf",
+      "TRANS": [ 0.0, 3.0, 3.0 ],
+      "ROTAT": [ 0.0, 0.0, 0.0 ],
+      "SCALE": [ 2.0, 2.0, 2.0 ]
+    }
+  ]
+}
