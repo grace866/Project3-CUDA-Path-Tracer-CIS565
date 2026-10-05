@@ -178,5 +178,48 @@ The denoised version of the current accumulation is output every 10 frames, so r
 
 ## Performance Analysis
 
+### Stream Compaction
+
+<p align="center">
+  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Stream%20Compaction%20Performance%20for%20Different%20Scenes.png" width="800"><br>
+</p>
+
+### Material Sorting 
+
+<p align="center">
+  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Material%20Sorting%20Performance%20for%20Different%20Scenes.png" width="800"><br>
+</p>
+
+### Bounding Volume Hierarchy
+
+<p align="center">
+  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/BVH%20Performance%20for%20Different%20Scenes.png" width="800"><br>
+</p>
+
 ## 3rd Party Resources 
 
+### Assets 
+| Model | Source |
+|-------|--------|
+| Concrete cat statue | [Poly Haven](https://polyhaven.com/a/concrete_cat_statue) |
+| Room | [CGTrader](https://www.cgtrader.com/3d-models/interior/bedroom/the-room-f749b9ec-815a-4e98-84d5-16ebbb2c9bd3) |
+| Crate | [CGTrader](https://www.cgtrader.com/3d-models/interior/bedroom/the-room-f749b9ec-815a-4e98-84d5-16ebbb2c9bd3) |
+| Chair | [CGTrader](https://www.cgtrader.com/free-3d-models/furniture/chair/office-chair-e29dcbbd-0abe-4ca5-866a-c8f75a2fc11f) |
+| Neon signs | [CGTrader](https://www.cgtrader.com/free-3d-models/exterior/street-exterior/free-scifi-neon-text) |
+| Cabinet | [CGTrader](https://www.cgtrader.com/free-3d-models/furniture/kitchen-cabinet/john-lewis-slatted-2-door-cabinet) |
+| Tall Potted Plant | [CGTrader](https://www.cgtrader.com/free-3d-models/plant/pot-plant/potted-plant-birds-of-paradise) |
+| Monstera Plant | [CGTrader](https://www.cgtrader.com/free-3d-models/interior/living-room/plant-monstera-vase) |
+| Small Potted Plant | [CGTrader](https://www.cgtrader.com/free-3d-models/plant/pot-plant/bush-pot-plant) |
+| PC | [CGTrader](https://www.cgtrader.com/free-3d-models/electronics/computer/pc-in-apple-imac-style) |
+| Rug | [CGTrader](https://www.cgtrader.com/free-3d-models/interior/living-room/vivense-elite-boucle-cream-carpet) |
+| Shelves | [CGTrader](https://www.cgtrader.com/free-3d-models/interior/bedroom/hexagonal-shelves) |
+| Mirror | [CGTrader](https://www.cgtrader.com/free-3d-models/interior/hall/round-mirror-free) |
+| Bed | [BlendSwap](https://blendswap.com/blend/17079) |
+| Dragon | [KhronosGroup/glTF-Sample-Assets](https://github.com/KhronosGroup/glTF-Sample-Assets) |
+
+- Dusk Sky from [Poly Haven](https://polyhaven.com/a/qwantani_dusk_2_puresky) and Night Sky from [Poly Haven](https://polyhaven.com/a/qwantani_night_puresky)
+
+### Libraries 
+- [TinyEXR](https://github.com/syoyo/tinyexr)
+- [TinyGLTF](https://github.com/syoyo/tinygltf)
+- [Intel Open Image Denoise](https://github.com/RenderKit/oidn)
