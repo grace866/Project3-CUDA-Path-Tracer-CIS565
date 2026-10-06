@@ -12,6 +12,7 @@ Monte Carlo Pathtracing is a rendering technique that produces photorealistic im
 
 Unlike simple rasterization, a different rendering technique that picks the color of geometry closest to the camera at each pixel, pathtracing allows us to render scenes with increased physical accuracy and complexity. 
 
+<a name="room-scene"></a>
 <table>
   <tr>
     <td align="center">
@@ -22,6 +23,7 @@ Unlike simple rasterization, a different rendering technique that picks the colo
     </td>
   </tr>
 </table>
+Note: handling emission in gltf loading not implemented until after the coding deadline
 
 ## Table of Contents
 
@@ -178,11 +180,30 @@ The denoised version of the current accumulation is output every 10 frames, so r
 
 ## Performance Analysis
 
+To evaluate performance, I compared average FPS for different scenes using the same set of optimizations. The Cornell Scene features a Stanford Dragon inside a Cornell box and the Environment Map Scene features the same dragon model with an environment map. 
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/cornell.2026-10-06_01-52-25z.5000samp.png" width="500"><br>
+      <sub>~100k tris</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_16-48-47z.5000samp.png" width="500"><br>
+      <sub>~100k tris</sub>
+    </td>
+  </tr>
+</table>
+
 ### Stream Compaction
 
 <p align="center">
   <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Stream%20Compaction%20Performance%20for%20Different%20Scenes.png" width="800"><br>
 </p>
+
+Stream compaction can be used to partition the paths such that terminated paths are separated from paths are still alive. Instead of launching one thread per path every bounce, we can reduce kernel launch size and only work on paths that are still alive. 
+
+From the graphs, we can observe a significant performance improvement from using stream compaction in the open Environment Map Scene versus the closed Cornell Scene. Since paths terminate more quickly in an open scene (randomly generated directions easily miss scene geometry), it is clear that open scenes benefit more from stream compaction, which specifically handles those dead paths and removes them from the work queue.
 
 ### Material Sorting 
 
@@ -190,11 +211,17 @@ The denoised version of the current accumulation is output every 10 frames, so r
   <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Material%20Sorting%20Performance%20for%20Different%20Scenes.png" width="800"><br>
 </p>
 
+To evaluate material sorting, we also measure average FPS for the [Room Scene](#room-scene), which contains a greater number of materials than the Cornell Scene and the Environment Map Scene. However, in all three scenes, material sorting decreases performance. Material sorting uses Thrust's `sort_by_key` over every live path on every bounce, which can increase memory traffic significantly due to many read/write passes over data. In this case, the overhead of sorting outweighs any gain from reduced divergence. 
+
+We can observe that material sorting hurts the Room Scene the least. When shading kernels become more complex and the number of materials increases significantly, material sorting could potentially increase performance.
+
 ### Bounding Volume Hierarchy
 
 <p align="center">
   <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/BVH%20Performance%20for%20Different%20Scenes.png" width="800"><br>
 </p>
+
+The speedup from using BVH is enormous! It is clear that naively iterating through every triangle in the scene is unreasonable and would increase render time considerably. When handling arbitrary meshes built from triangle primitives, it is absolutely necessary to improve intersection testing with a spatial acceleration structure. 
 
 ## 3rd Party Resources 
 
@@ -222,4 +249,4 @@ The denoised version of the current accumulation is output every 10 frames, so r
 ### Libraries 
 - [TinyEXR](https://github.com/syoyo/tinyexr)
 - [TinyGLTF](https://github.com/syoyo/tinygltf)
-- [Intel Open Image Denoise](https://github.com/RenderKit/oidn)
+- [Intel Open Image Denoise](https://github.com/RenderKit/oidn) 
