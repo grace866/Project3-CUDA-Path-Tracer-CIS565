@@ -24,7 +24,7 @@
 
 #define ERRORCHECK 0
 #define STREAM_COMPACTION 1
-#define MATERIAL_SORTING 1
+#define MATERIAL_SORTING 0
 #define USE_BVH 1
 #define USE_DENOISER 0
 #define FOCAL_DISTANCE 20
@@ -694,7 +694,7 @@ void pathtraceCopyImg() {
     const int pixelcount = cam.resolution.x * cam.resolution.y;
 
     // Retrieve image from GPU - don't want to do every frame like base code does
-    cudaMemcpy(hst_scene->state.image.data(), dev_denoised, pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hst_scene->state.image.data(), dev_image, pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
 }
 
 
