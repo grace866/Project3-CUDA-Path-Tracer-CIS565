@@ -180,48 +180,70 @@ The denoised version of the current accumulation is output every 10 frames, so r
 
 ## Performance Analysis
 
-To evaluate performance, I compared average FPS for different scenes using the same set of optimizations. The Cornell Scene features a Stanford Dragon inside a Cornell box and the Environment Map Scene features the same dragon model with an environment map. 
+For this path tracer, I implemented three optimizations: stream compaction to limit kernel launches to paths that are still alive, material sorting to reduce wave divergence, and a bounding volume hierarchy to speed up intersection testing. Since the combination of stream compaction + BVH yielded the best results, stream compaction ON, material sorting OFF, and BVH ON are the default settings. 
+
+### Part 1: Stream Compaction 
+
+To evaluate stream compaction, I compared average FPS for two scenes: a closed scene featuring the Stanford Dragon in a Cornell Box and an open scene with the same dragon model with an environment map.
 
 <table>
   <tr>
     <td align="center">
       <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/cornell.2026-10-06_01-52-25z.5000samp.png" width="500"><br>
-      <sub>~100k tris</sub>
+      <sub>>100k tris</sub>
     </td>
     <td align="center">
       <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_16-48-47z.5000samp.png" width="500"><br>
-      <sub>~100k tris</sub>
+      <sub>>100k tris</sub>
     </td>
   </tr>
 </table>
 
-### Stream Compaction
+Stream compaction can be used to separate dead paths from live ones. Instead of launching one thread per path every bounce, we can reduce kernel launch size and only work on paths that are still alive. 
 
 <p align="center">
   <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Stream%20Compaction%20Performance%20for%20Different%20Scenes.png" width="800"><br>
 </p>
 
-Stream compaction can be used to partition the paths such that terminated paths are separated from paths are still alive. Instead of launching one thread per path every bounce, we can reduce kernel launch size and only work on paths that are still alive. 
+It appears that the performance gain from using stream compaction was more significant for the open scene than the closed scene. This is expected, as paths are more likely to miss geometry and terminate early without enclosing geometry. On the other hand, it is difficult for rays to escape in a closed scene, which means that paths are likely to terminate early only from hitting a light source. 
 
-From the graphs, we can observe a significant performance improvement from using stream compaction in the open Environment Map Scene versus the closed Cornell Scene. Since paths terminate more quickly in an open scene (randomly generated directions easily miss scene geometry), it is clear that open scenes benefit more from stream compaction, which specifically handles those dead paths and removes them from the work queue.
+For this particular closed scene, using stream compaction still produces a slight speedup. With fewer/smaller light sources, it is likely that the overhead of partitioning paths would outweigh any benefit. 
 
-### Material Sorting 
+### Part 2: Material Sorting 
+
+To evaluate material sorting, I compared average FPS for two scenes: the same closed scene from Part 1 and the [Room Scene](#room-scene) displayed previously.
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/cornell.2026-10-06_01-52-25z.5000samp.png" width="500"><br>
+      <sub>4 materials</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/envmap.2026-10-05_15-45-41z.5000samp.png" width="500"><br>
+      <sub>>30 materials</sub>
+    </td>
+  </tr>
+</table>
 
 <p align="center">
   <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Material%20Sorting%20Performance%20for%20Different%20Scenes.png" width="800"><br>
 </p>
 
-To evaluate material sorting, we also measure average FPS for the [Room Scene](#room-scene), which contains a greater number of materials than the Cornell Scene and the Environment Map Scene. However, in all three scenes, material sorting decreases performance. Material sorting uses Thrust's `sort_by_key` over every live path on every bounce, which can increase memory traffic significantly due to many read/write passes over data. In this case, the overhead of sorting outweighs any gain from reduced divergence. 
+In both scenes, performance was worse with material sorting enabled. The goal of sorting is to group paths by `materialId` so that threads in the same warp take the same branch in the shading kernel, reducing warp divergence. The cost is that this sort runs on every live path at every bounce. It uses Thrust's `sort_by_key` with each pass reading and writing to both the intersection and path arrays, increasing memory traffic. Additionally, profiling with Nsight shows that the shading kernel takes only about 3% of GPU time. Even eliminating all divergence in the shading kernel could recover only a sliver of total runtime, while the sort adds a fixed per-bounce cost. 
 
-We can observe that material sorting hurts the Room Scene the least. When shading kernels become more complex and the number of materials increases significantly, material sorting could potentially increase performance.
+However, it is worth noting that material sorting hurts the Room Scene less. With more materials, adjacent paths in memory are more likely to disagree on which shading branch to take, so there is more divergence to remove. This suggests that sorting could improve performance in scenes with many materials and complex shading. 
 
-### Bounding Volume Hierarchy
+### Part 3: Bounding Volume Hierarchy
 
-<p align="center">
-  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/BVH%20Performance%20for%20Different%20Scenes.png" width="800"><br>
-</p>
+Using the same two scenes from part 1, I evaluated the use of BVH. Without BVH, the average FPS for both scenes was less than 1. Since scenes can easily contain hundreds of thousands of triangles, it is absolutely necessary to improve upon naively iterating through the scene's triangles to find an intersection. With BVH, the open scene achieved an average FPS of 68.7.
 
-The speedup from using BVH is enormous! It is clear that naively iterating through every triangle in the scene is unreasonable and would increase render time considerably. When handling arbitrary meshes built from triangle primitives, it is absolutely necessary to improve intersection testing with a spatial acceleration structure. 
+Despite the massive improvement from using BVH, there is still a lot of room for improvement. Using Nsight Systems (stream compaction ON, material sorting OFF, BVH ON), I found that nearly all GPU time is spent running the `computeIntersections` kernel (which is where BVH traversal does work). To examine this more closely, I used Nsight Compute to profile `computeIntersections` for several bounces. The report showed that compute and memory throughput for `computeIntersections` was only at about 40%, indicating that the kernel was neither compute nor memory bound. This pointed toward `computeIntersections` being latency-bound, which was confirmed by the register count per thread of 115 for the selected kernel launch. Nsight indicated that the 4 theoretical warps per scheduler this kernel could launch was well below the hardware maximum of 12 due to this. With less warps to swap to, it is more difficult for the scheduler to hide latency. 
+
+To alleviate register pressure, I'm working on reconfiguring the BVH traversal and triangle intersection testing algorithm such that there are fewer active values at any given point. 
+Recently, I've also been learning about OptiX, NVIDIA's application framework for optimizing ray tracing performance on the GPU. Replacing my current intersection testing implementation with hardware traversal and triangle intersection would move computations and traversal into the RT cores. This largely removes the register pressure in `computeIntersections`, raising occupancy and giving the scheduler more warps to hide latency with. 
+
+Another thing to examine for the future is memory coalescing. It is likely that threads in a warp (corresponding to paths) are not handling neighboring intersections, which means that we need many transactions to resolve a load and that most of each fetched cache line goes unused. 
 
 ## 3rd Party Resources 
 
