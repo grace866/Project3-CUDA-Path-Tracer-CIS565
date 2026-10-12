@@ -226,7 +226,7 @@ To evaluate material sorting, I compared average FPS for two scenes: the same cl
 </table>
 
 <p align="center">
-  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Stream%20Compaction%20Performance%20for%20Different%20Scenes.png" width="800"><br>
+  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Material%20Sorting%20Performance%20for%20Different%20Scenes.png" width="800"><br>
 </p>
 
 In both scenes, performance was worse with material sorting enabled. The goal of sorting is to group paths by `materialId` so that threads in the same warp take the same branch in the shading kernel, reducing warp divergence. The cost is that this sort runs on every live path at every bounce. It uses Thrust's `sort_by_key` with each pass reading and writing to both the intersection and path arrays, increasing memory traffic. Additionally, profiling with Nsight shows that the shading kernel takes only about 3% of GPU time. Even eliminating all divergence in the shading kernel could recover only a sliver of total runtime, while the sort adds a fixed per-bounce cost. 
