@@ -177,6 +177,36 @@ An AI-based denoiser from [Intel Open Image Denoise](https://www.openimagedenois
 
 The denoised version of the current accumulation is output every 10 frames, so results can be viewed continuously without a significant performance cost.
 
+## Interactive GUI
+
+The path tracer includes a real-time control panel built with [Dear ImGui](https://github.com/ocornut/imgui), so you can change scenes and rendering options while the image accumulates, without recompiling or restarting.
+
+![GUI screenshot](img/gui.png)
+
+### Controls
+
+**Statistics**
+- **Traced depth:** the number of bounces traced in the most recent iteration.
+- **Frame time / FPS:** the average time per iteration, useful for comparing the cost of each feature.
+
+**Scene selector**
+- A dropdown lists every available scene (Cool Bedroom, Bokeh Lights, Opaque Dragon, Transmissive Sphere, Basic Cornell). Selecting one frees the GPU buffers of the current scene, loads the new one, rebuilds the BVH, textures, and environment map, resets the camera, and restarts accumulation.
+
+**Render performance and quality**
+- **Stream Compaction:** removes terminated paths after each bounce so fewer threads run on later bounces.
+- **Material Sorting:** sorts intersections by material ID to reduce warp divergence during shading.
+- **Use AI Denoiser:** toggles denoising of the accumulated image for display.
+
+**Physical camera**
+- **Focal Distance:** distance from the camera to the plane that is in perfect focus.
+- **Aperture Radius:** size of the lens opening. Larger values give a shallower depth of field and stronger bokeh; 0 gives a pinhole camera with everything in focus.
+
+### Implementation notes
+
+- Settings live in a `PathtracerSettings` struct that the GUI edits directly. Changing any option resets sample accumulation (`iteration = 0`) so old samples rendered with different settings are never blended into the new image.
+- Features that used to be compile-time `#define`s (stream compaction, material sorting, denoiser, focal distance, aperture radius) are now runtime options. This lets you A/B test performance on the same scene and camera angle in a single session.
+- The GUI is drawn after the path-traced quad each frame, and mouse input over the panel is ignored by the camera controls, so dragging a slider doesn't orbit the view.
+
 ## Performance Analysis
 
 For this path tracer, I implemented three optimizations: stream compaction to limit kernel launches to paths that are still alive, material sorting to reduce wave divergence, and a bounding volume hierarchy to speed up intersection testing. Since the combination of stream compaction + BVH yielded the best results, stream compaction ON, material sorting OFF, and BVH ON are the default settings. 
