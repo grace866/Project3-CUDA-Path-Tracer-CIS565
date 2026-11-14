@@ -126,3 +126,11 @@ struct BVHNode
     // leftFirst -> == index of left child if triCount = 0 (not a leaf) & == firstPrim if triCount > 0 (is a leaf) 
     int leftFirst, triCount;
 };
+
+struct PathtracerSettings {
+    bool streamCompaction = true;
+    bool materialSorting = false;
+    bool useDenoiser = false;
+    float focalDistance = 20.0f;
+    float apertureRadius = 0.05f;
+};

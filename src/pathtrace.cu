@@ -23,10 +23,7 @@
 #include "denoiser.h"
 
 #define ERRORCHECK 0
-#define STREAM_COMPACTION 1
-#define MATERIAL_SORTING 1
 #define USE_BVH 1
-#define USE_DENOISER 0
 #define FOCAL_DISTANCE 20
 #define APERTURE_RADIUS 0.05
 
@@ -87,6 +84,7 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution, int iter, glm
 }
 
 static Scene* hst_scene = NULL;
+static PathtracerSettings* hst_settings = NULL;
 static GuiDataContainer* guiData = NULL;
 static glm::vec3* dev_image = NULL;
 static Geom* dev_geoms = NULL;
@@ -115,9 +113,10 @@ void InitDataContainer(GuiDataContainer* imGuiData)
     guiData = imGuiData;
 }
 
-void pathtraceInit(Scene* scene)
+void pathtraceInit(Scene* scene, PathtracerSettings* settings)
 {
     hst_scene = scene;
+    hst_settings = settings;
 
     // build BVH
     BVH bvh;
@@ -245,18 +244,24 @@ void pathtraceReset() {
 
 void pathtraceFree()
 {
-    cudaFree(dev_image); 
-    cudaFree(dev_paths);
-    cudaFree(dev_geoms);
-    cudaFree(dev_materials);
-    cudaFree(dev_intersections);
-    cudaFree(dev_lights);
-    cudaFree(dev_triangles);
-    cudaFree(dev_nodes);
-    cudaFree(dev_triPtrs);
+    cudaFree(dev_image); dev_image = NULL;
+    cudaFree(dev_paths); dev_paths = NULL;
+    cudaFree(dev_geoms); dev_geoms = NULL;
+    cudaFree(dev_materials); dev_materials = NULL;
+    cudaFree(dev_intersections); dev_intersections = NULL;
+    cudaFree(dev_lights); dev_lights = NULL;
+    cudaFree(dev_triangles); dev_triangles = NULL;
+    cudaFree(dev_nodes); dev_nodes = NULL;
+    cudaFree(dev_triPtrs); dev_triPtrs = NULL;
 
-    cudaFree(dev_mapdata);
-    cudaDestroyTextureObject(dev_envmap);
+    if (dev_envmap) {
+        cudaDestroyTextureObject(dev_envmap);
+        dev_envmap = 0;
+    }
+    if (dev_mapdata) {
+        cudaFreeArray(dev_mapdata);
+        dev_mapdata = NULL;
+    }
 
     for (auto texture : host_textures) {
         cudaDestroyTextureObject(texture);
@@ -264,14 +269,14 @@ void pathtraceFree()
     host_textures.clear();
 
     for (auto data : host_texData) {
-        cudaFree(data);
+        cudaFreeArray(data);
     }
     host_texData.clear();
 
-    cudaFree(dev_textures);
+    cudaFree(dev_textures); dev_textures = NULL;
 
-    cudaFree(dev_avgImg);
-    cudaFree(dev_denoised);
+    cudaFree(dev_avgImg); dev_avgImg = NULL;
+    cudaFree(dev_denoised); dev_denoised = NULL;
     denoiserFree();
 
     checkCUDAError("pathtraceFree");
@@ -285,7 +290,7 @@ void pathtraceFree()
 * motion blur - jitter rays "in time"
 * lens effect - jitter ray origin positions based on a lens
 */
-__global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, PathSegment* pathSegments)
+__global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, PathSegment* pathSegments, float focalDist, float apertureRad)
 {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -309,11 +314,11 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
         );
 
         // where does ray hit focal plane (defined by focal distance) 
-        float t = FOCAL_DISTANCE / glm::dot(segment.ray.direction, cam.view);
+        float t = focalDist / glm::dot(segment.ray.direction, cam.view);
         glm::vec3 focalPoint = cam.position + segment.ray.direction * t;
 
         // pick random spot on aperture 
-        float r = APERTURE_RADIUS * sqrt(u01(rng));
+        float r = apertureRad* sqrt(u01(rng));
         float theta = 2.0f * PI * sqrt(u01(rng));
         float x = r * cos(theta); 
         float y = r * sin(theta);
@@ -598,7 +603,7 @@ void pathtrace(uchar4* pbo, int frame, int iter)
 
     ///////////////////////////////////////////////////////////////////////////
 
-    generateRayFromCamera<<<blocksPerGrid2d, blockSize2d>>>(cam, iter, traceDepth, dev_paths);
+    generateRayFromCamera<<<blocksPerGrid2d, blockSize2d>>>(cam, iter, traceDepth, dev_paths, hst_settings->focalDistance, hst_settings->apertureRadius);
     checkCUDAError("generate camera ray");
 
     int depth = 0;
@@ -632,12 +637,12 @@ void pathtrace(uchar4* pbo, int frame, int iter)
         cudaDeviceSynchronize();
         depth++;
 
-        #if MATERIAL_SORTING
+        if (hst_settings->materialSorting) {
             thrust::device_ptr<ShadeableIntersection> d_intersections(dev_intersections);
             thrust::device_ptr<PathSegment> d_paths_sorted(dev_paths);
 
             thrust::stable_sort_by_key(thrust::device, d_intersections, d_intersections + num_paths, d_paths_sorted, compare_by_material());
-        #endif
+        }
 
         shadeFakeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>>(
             iter,
@@ -650,12 +655,11 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             dev_textures
         );
 
-        #if STREAM_COMPACTION
+        if (hst_settings->streamCompaction) {
             thrust::device_ptr<PathSegment> d_paths_compact(dev_paths);
             thrust::device_ptr<PathSegment> compact_end = thrust::stable_partition(thrust::device, d_paths_compact, d_paths_compact + num_paths, is_alive());
             num_paths = compact_end.get() - dev_paths;
-        #endif
-
+        }
             
         iterationComplete = (num_paths == 0 || depth >= traceDepth); 
 
@@ -673,11 +677,11 @@ void pathtrace(uchar4* pbo, int frame, int iter)
 
     // denoise accumulated dev_image
 
-    if (USE_DENOISER && (iter % 10 == 0)) {
+    if (hst_settings->useDenoiser && (iter % 10 == 0)) {
         denoise();
         sendImageToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, iter, dev_denoised);
     }
-    else if (USE_DENOISER) {
+    else if (hst_settings->useDenoiser) {
         int iterAfterDenoise = iter % 10;
         int denoisedIter = iter - iterAfterDenoise;
         sendImageToPBO << <blocksPerGrid2d, blockSize2d >> > (pbo, cam.resolution, denoisedIter, dev_denoised);

@@ -62,6 +62,22 @@ GuiDataContainer* imguiData = NULL;
 ImGuiIO* io = nullptr;
 bool mouseOverImGuiWinow = false;
 
+// pathtracer settings struct 
+static bool settingChanged = false;
+PathtracerSettings* settings;
+
+// which scene 
+static bool sceneChanged = false;
+static int sceneIdx = 0;
+
+static std::vector<std::string> sceneFiles = {
+    "scenes\\cool_bedroom.json",
+    "scenes\\dof.json",
+    "scenes\\opaque_pbr.json",
+    "scenes\\transmissive_pbr.json",
+    "scenes\\cornell.json",
+};
+
 // Forward declarations for window loop and interactivity
 void runCuda();
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
@@ -234,8 +250,12 @@ bool init()
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGuiStyle& s = ImGui::GetStyle();
+    s.WindowRounding = 12.0f;
+    s.FrameRounding = 6.0f;
+    s.GrabRounding = 6.0f;
     io = &ImGui::GetIO(); (void)io;
-    ImGui::StyleColorsLight();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 120");
 
@@ -258,7 +278,6 @@ void InitImguiData(GuiDataContainer* guiData)
 }
 
 
-// LOOK: Un-Comment to check ImGui Usage
 void RenderImGui()
 {
     mouseOverImGuiWinow = io->WantCaptureMouse;
@@ -273,28 +292,43 @@ void RenderImGui()
     static float f = 0.0f;
     static int counter = 0;
 
-    ImGui::Begin("Path Tracer Analytics");                  // Create a window called "Hello, world!" and append into it.
-    
-    // LOOK: Un-Comment to check the output window and usage
-    //ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-    //ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-    //ImGui::Checkbox("Another Window", &show_another_window);
+    ImGui::Begin("Path Tracer Analytics");   
 
-    //ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-    //ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+    // scene to display
+    ImGui::Text("Scene");
+    ImGui::Separator();
 
-    //if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-    //    counter++;
-    //ImGui::SameLine();
-    //ImGui::Text("counter = %d", counter);
     ImGui::Text("Traced Depth %d", imguiData->TracedDepth);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+    ImGui::Dummy(ImVec2(0, 5));
+
+    const char* items[] = { "Cool Bedroom", "Bokeh Lights", "Opaque Dragon", "Transmissive Sphere", "Basic Cornell" };
+
+    if (ImGui::Combo("", &sceneIdx, items, IM_ARRAYSIZE(items))) {
+        sceneChanged = true;
+    }
+   
+    ImGui::Dummy(ImVec2(0, 10));
+
+    // no BVH toggle because don't want pathtracer to suddenly break 
+    ImGui::Text("Render performance and quality");
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0, 5));
+    settingChanged |= ImGui::Checkbox("Stream Compaction", &settings->streamCompaction);
+    settingChanged |= ImGui::Checkbox("Material Sorting", &settings->materialSorting);
+    settingChanged |= ImGui::Checkbox("Use AI Denoiser", &settings->useDenoiser);
+    ImGui::Dummy(ImVec2(0, 10));
+
+    ImGui::Text("Physical camera");
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0, 5));
+    settingChanged |= ImGui::SliderFloat("Focal Distance", &settings->focalDistance, 0.1f, 100.0f);
+    settingChanged |= ImGui::SliderFloat("Aperture Radius", &settings->apertureRadius, 0.0f, 1.0f);
+
     ImGui::End();
-
-
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
 }
 
 bool MouseOverImGuiWindow()
@@ -351,7 +385,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    const char* sceneFile = argv[1];
+    const char* sceneFile = sceneFiles[sceneIdx].c_str();
 
     // Load scene file
     scene = new Scene(sceneFile);
@@ -381,6 +415,9 @@ int main(int argc, char** argv)
     theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
     ogLookAt = cam.lookAt;
     zoom = glm::length(cam.position - ogLookAt);
+
+    // before mainLoop, initialize settings
+    settings = new PathtracerSettings();
 
     // Initialize CUDA and GL components
     init();
@@ -425,6 +462,56 @@ void saveImage()
 
 void runCuda()
 {
+    // scene changed
+    if (sceneChanged) {
+        pathtraceFree();
+        // where to delete heap allocated stuff (like structs)
+
+        delete scene;
+        const char* newScene = sceneFiles[sceneIdx].c_str();
+        scene = new Scene(newScene);
+        renderState = &scene->state;
+
+        int w = renderState->camera.resolution.x;
+        int h = renderState->camera.resolution.y;
+
+        // recreate pbo, textures, window size if new scene dimensions don't match
+        if (w != width || h != height)
+        {
+            width = w;
+            height = h;
+            deletePBO(&pbo);
+            deleteTexture(&displayImage);
+            initTextures();
+            initPBO();
+            glfwSetWindowSize(window, width, height);
+            glViewport(0, 0, width, height);
+        }
+
+        // update camera 
+        Camera& cam = renderState->camera;
+
+        glm::vec3 view = cam.view;
+        glm::vec3 up = cam.up;
+        glm::vec3 right = glm::cross(view, up);
+        up = glm::cross(right, view);
+
+        cameraPosition = cam.position;
+
+        glm::vec3 viewXZ = glm::vec3(view.x, 0.0f, view.z);
+        glm::vec3 viewZY = glm::vec3(0.0f, view.y, view.z);
+        phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
+        theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
+        ogLookAt = cam.lookAt;
+        zoom = glm::length(cam.position - ogLookAt);
+
+        camchanged = true; // if moved camera before scene change
+        initialize = true; 
+        iteration = 0;
+        sceneChanged = false;
+    }
+
+    // camera view changed
     if (camchanged)
     {
         iteration = 0;
@@ -446,13 +533,20 @@ void runCuda()
         camchanged = false;
     }
 
+    // render/camera changed
+    if (settingChanged)
+    {
+        iteration = 0;
+        settingChanged = false;
+    }
+
     // Map OpenGL buffer object for writing from CUDA on a single GPU
     // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
 
     if (iteration == 0)
     {
         if (initialize) {
-            pathtraceInit(scene);
+            pathtraceInit(scene, settings);
             initialize = false;
         }
         else {
