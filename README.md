@@ -23,7 +23,6 @@ Unlike simple rasterization, a different rendering technique that picks the colo
     </td>
   </tr>
 </table>
-Note: handling emission in gltf loading not implemented until after the coding deadline
 
 ## Table of Contents
 
@@ -238,7 +237,19 @@ However, it is worth noting that material sorting hurts the Room Scene less. Wit
 
 Using the same two scenes from part 1, I evaluated the use of BVH. Without BVH, the average FPS for both scenes was less than 1. Since scenes can easily contain hundreds of thousands of triangles, it is absolutely necessary to improve upon naively iterating through the scene's triangles to find an intersection. With BVH, the open scene achieved an average FPS of 68.7.
 
-Despite the massive improvement from using BVH, there is still a lot of room for improvement. Using Nsight Systems (stream compaction ON, material sorting OFF, BVH ON), I found that nearly all GPU time is spent running the `computeIntersections` kernel (which is where BVH traversal does work). To examine this more closely, I used Nsight Compute to profile `computeIntersections` for several bounces. The report showed that compute and memory throughput for `computeIntersections` was only at about 40%, indicating that the kernel was neither compute nor memory bound. This pointed toward `computeIntersections` being latency-bound, which was confirmed by the register count per thread of 115 for the selected kernel launch. Nsight indicated that the 4 theoretical warps per scheduler this kernel could launch was well below the hardware maximum of 12 due to this. With less warps to swap to, it is more difficult for the scheduler to hide latency. 
+Despite the massive improvement from using BVH, there is still a lot of room for improvement. Using Nsight Systems (stream compaction ON, material sorting OFF, BVH ON), I found that nearly all GPU time is spent running the `computeIntersections` kernel (which is where BVH traversal does work).
+
+<p align="center">
+  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Nsight%20Systems" width="800"><br>
+</p>
+
+To examine this more closely, I used Nsight Compute to profile `computeIntersections` for several bounces.
+
+<p align="center">
+  <img src="https://github.com/grace866/Project3-CUDA-Path-Tracer-CIS565/blob/post-deadline/img/Nsight%20Compute" width="800"><br>
+</p>
+
+The report showed that compute and memory throughput for `computeIntersections` was only at about 40%, indicating that the kernel was neither compute nor memory bound. This pointed toward `computeIntersections` being latency-bound, which was confirmed by the register count per thread of 115 for the selected kernel launch. Nsight indicated that the 4 theoretical warps per scheduler this kernel could launch was well below the hardware maximum of 12 due to this. With less warps to swap to, it is more difficult for the scheduler to hide latency. 
 
 To alleviate register pressure, I'm working on reconfiguring the BVH traversal and triangle intersection testing algorithm such that there are fewer active values at any given point. 
 Recently, I've also been learning about OptiX, NVIDIA's application framework for optimizing ray tracing performance on the GPU. Replacing my current intersection testing implementation with hardware traversal and triangle intersection would move computations and traversal into the RT cores. This largely removes the register pressure in `computeIntersections`, raising occupancy and giving the scheduler more warps to hide latency with. 
