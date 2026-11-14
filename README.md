@@ -76,9 +76,9 @@ The specular lobe is based on the microfacet theory, which assumes that a surfac
 [Joe Schutte’s probability distribution simplified version](https://schuttejoe.github.io/post/ggximportancesamplingpart1/) was incredibly helpful for implementing the specular lobe. The diffuse lobe was implemented simply using uniform cosine-weighted hemisphere sampling.
 
 I used this shading model
-$$
-f(\omega_o, \omega_i) = k_d \frac{R}{\pi} + k_s \frac{D\,G}{4(\omega_o \cdot n)(\omega_i \cdot n)}
-$$
+```math
+f(\omega_o, \omega_i) = k_d \frac{R}{\pi} + k_s \frac{D\,G}{4\,(\omega_o \cdot n)(\omega_i \cdot n)}
+```
 , published by Epic as a practical PBR model for real-time rendering, for the full metallic-roughness BRDF. `k_s` is simply the fresnel term and `k_d = 1 - k_s`.
 
 I stochastically sampled the diffuse and specular lobes by comparing a uniformly sampled probability `p` and the luminance of the multi-channel fresnel term. To compute this, I interpolated between the metallic fresnel term, which takes the material’s albedo as the base reflectance, and `0.04`, the base reflectance for non-metallic materials.
