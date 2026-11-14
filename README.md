@@ -34,6 +34,7 @@ Unlike simple rasterization, a different rendering technique that picks the colo
   - [Environment Mapping](#environment-mapping)
   - [Depth of Field](#depth-of-field)
   - [Intel Open Image Denoise](#intel-open-image-denoise)
+  - [Interactive GUI](#interactive-gui)
 - [Performance Analysis](#performance-analysis)
 - [3rd Party Resources](#3rd-party-resources)
 
